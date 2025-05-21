@@ -36,6 +36,10 @@ export async function POST(req: Request) {
       ON CONFLICT (user_id) DO UPDATE
       SET balance = "CasinoWallet".balance + ${value}
     `;
+    await tx`
+      INSERT INTO "CasinoTransactions" (user_id, type, amount)
+      VALUES (${user.id}, 'deposit', ${value})
+    `;
   });
 
   return NextResponse.json({ success: true });

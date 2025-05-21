@@ -33,6 +33,10 @@ export async function POST(req: Request) {
     await tx`
       UPDATE "User" SET money = money + ${value} WHERE id = ${wallet.user_id}
     `;
+    await tx`
+      INSERT INTO "CasinoTransactions" (user_id, type, amount)
+      VALUES (${wallet.user_id}, 'withdraw', ${value})
+    `;
   });
 
   return NextResponse.json({ success: true });
