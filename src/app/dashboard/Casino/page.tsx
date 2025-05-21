@@ -1,9 +1,10 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import BlackjackGame from '@/components/dashboard/Casino/BlackjackGame';
 import CasinoControls from '@/components/dashboard/Casino/CasinoControls';
 
-const TABS = ['Casino Wallet', 'Blackjack', 'Roulette'];
+const TABS = ['Casino Wallet', 'Blackjack'];
 
 export default function Casino() {
   const [activeTab, setActiveTab] = useState('Casino Wallet');
@@ -27,8 +28,6 @@ export default function Casino() {
 
   return (
     <div className="space-y-6">
-      
-
       <div className="text-sm text-gray-400">
         Casino Wallet Balance: <span className="text-white font-semibold">${casinoBalance ?? '...'}</span>
       </div>
@@ -52,7 +51,6 @@ export default function Casino() {
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-8">
         {activeTab === 'Casino Wallet' && <CasinoControls onSuccess={fetchBalance} />}
         {activeTab === 'Blackjack' && <BlackjackGame onResult={fetchBalance} />}
-        {activeTab === 'Roulette' && <p className="text-gray-300">🎯 Roulette game coming soon...</p>}
       </div>
     </div>
   );
