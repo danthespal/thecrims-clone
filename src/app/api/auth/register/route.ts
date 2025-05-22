@@ -9,13 +9,20 @@ export async function POST(req: Request) {
       account_name,
       email,
       password,
-      profile_name,
-      profile_suffix,
+      profile_name,     // includes full name + #suffix
+      profile_suffix,   // stored separately for sorting or constraints
       date_of_birth,
     } = await req.json();
 
-    // Basic checks
-    if (!account_name || !email || !password || !profile_name || !profile_suffix || !date_of_birth) {
+    // Basic validation
+    if (
+      !account_name ||
+      !email ||
+      !password ||
+      !profile_name ||
+      !profile_suffix ||
+      !date_of_birth
+    ) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -28,27 +35,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Account name or email already exists' }, { status: 409 });
     }
 
-    // Generate full profile name with suffix
-    const fullProfileName = `${profile_name}#${profile_suffix}`;
-
-    // Hash the password
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Insert new user
+    // Insert new user with full profile name and suffix
     const [inserted] = await sql`
       INSERT INTO "User" (
         account_name, email, password, profile_name, profile_suffix,
         date_of_birth, level, respect, money, will
       ) VALUES (
-        ${account_name}, ${email}, ${hashedPassword}, ${fullProfileName}, ${profile_suffix},
+        ${account_name}, ${email}, ${hashedPassword}, ${profile_name}, ${profile_suffix},
         ${date_of_birth}, 1, 0, 0, 100
       ) RETURNING id
     `;
 
     // Create session
-    await createSession(inserted.id);
-
-    return NextResponse.json({ success: true });
+    return await createSession(inserted.id);
   } catch (err) {
     console.error('Register error:', err);
     return NextResponse.json({ error: 'Registration failed' }, { status: 500 });

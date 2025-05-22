@@ -3,7 +3,7 @@ interface Props {
   setActive: (item: string) => void;
 }
 
-const accountMenu = ["Profile Status", "Profile Settings"];
+const accountMenu = ["Inventory", "Profile Status", "Profile Settings"];
 const gameMenu = ["Streets", "Robbery", "Casino", "Hookers"];
 
 export default function SidebarMenu({ active, setActive }: Props) {

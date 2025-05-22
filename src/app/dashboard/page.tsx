@@ -2,22 +2,39 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { JSX } from 'react';
+
 import UserStats from '@/components/dashboard/UserStats';
 import SidebarMenu from '@/components/dashboard/SidebarMenu';
 import Streets from '@/components/dashboard/Street/Streets';
 import Robbery from '@/components/dashboard/Robbery/Robbery';
 import Casino from '@/app/dashboard/Casino/page';
+import CharacterInventory from '@/components/dashboard/User/CharacterInventory';
 
 export default function DashboardPage() {
   const [active, setActive] = useState('Streets');
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  // Load last selected tab from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('activeTab');
+    if (saved) setActive(saved);
+  }, []);
+
+  // Save tab selection to localStorage
+  useEffect(() => {
+    localStorage.setItem('activeTab', active);
+  }, [active]);
+
+  // Session check
   useEffect(() => {
     const checkSession = async () => {
       try {
         const res = await fetch('/api/user/session');
         const data = await res.json();
         if (!data.authenticated) router.push('/');
+        else setLoading(false);
       } catch (error) {
         console.error('Session check failed:', error);
         router.push('/');
@@ -26,6 +43,32 @@ export default function DashboardPage() {
 
     checkSession();
   }, [router]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-black text-white">
+        <p className="text-gray-400">Loading dashboard...</p>
+      </main>
+    );
+  }
+
+  // Map of active tab to component
+  const tabComponents: Record<string, JSX.Element> = {
+    Inventory: <CharacterInventory />,
+    Streets: <Streets />,
+    Robbery: <Robbery />,
+    Casino: <Casino />,
+  };
+
+  const ActiveComponent =
+    tabComponents[active] ??
+    ['Hookers', 'Profile Status', 'Profile Settings'].includes(active) ? (
+      <p className="text-gray-300">
+        This is a placeholder for the <strong>{active}</strong> feature.
+      </p>
+    ) : (
+      <p className="text-gray-300">Unknown section selected.</p>
+    );
 
   return (
     <main className="min-h-screen flex bg-black text-white">
@@ -40,15 +83,7 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-teal-400 mb-4">{active}</h1>
 
         <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
-          {active === 'Streets' && <Streets />}
-          {active === 'Robbery' && <Robbery />}
-          {active === 'Casino' && <Casino />}
-          {/* Placeholder for other tabs */}
-          {['Hookers', 'Profile Status', 'Profile Settings'].includes(active) && (
-            <p className="text-gray-300">
-              This is a placeholder for the <strong>{active}</strong> feature.
-            </p>
-          )}
+          {ActiveComponent}
         </div>
       </section>
     </main>

@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import zxcvbn from 'zxcvbn';
 
+type Availability = {
+  account_name: boolean | null;
+  email: boolean | null;
+  profile_name: boolean | null;
+};
+
 export default function RegisterForm() {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -19,7 +25,7 @@ export default function RegisterForm() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [availability, setAvailability] = useState({
+  const [availability, setAvailability] = useState<Availability>({
     account_name: null,
     email: null,
     profile_name: null,
@@ -34,8 +40,7 @@ export default function RegisterForm() {
 
   useEffect(() => {
     if (form.password) {
-      const result = zxcvbn(form.password);
-      setPasswordStrength(result.score);
+      setPasswordStrength(zxcvbn(form.password).score);
     }
   }, [form.password]);
 
@@ -43,12 +48,20 @@ export default function RegisterForm() {
     document.getElementById('account_name')?.focus();
   }, []);
 
+  const generateSuffix = (profile: string, dob: string) => {
+    if (!profile || !dob) return '';
+    const d = new Date(dob);
+    if (isNaN(d.getTime())) return '';
+    return `#${String(d.getFullYear() % 100)}${d.getMonth() + 1}${d.getDate()}`;
+  };
+
   const checkAvailability = (field: string, value: string) => {
     const routeMap: Record<string, string> = {
       account_name: 'check-account',
       email: 'check-email',
       profile_name: 'check-profile',
     };
+
     const route = routeMap[field];
     if (!route || !value) return;
 
@@ -56,12 +69,23 @@ export default function RegisterForm() {
 
     debounceTimers.current[field] = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/validation/${route}?${field}=${encodeURIComponent(value)}`);
-        if (!res.ok) throw new Error('Not Found');
+        let url = `/api/validation/${route}?${field}=${encodeURIComponent(value)}`;
+
+        if (field === 'profile_name') {
+          const { date_of_birth } = form;
+          if (!date_of_birth) return;
+          const query = new URLSearchParams({
+            profile_name: value,
+            date_of_birth,
+          });
+          url = `/api/validation/check-profile?${query.toString()}`;
+        }
+
+        const res = await fetch(url);
         const data = await res.json();
         setAvailability((prev) => ({ ...prev, [field]: data.available }));
-      } catch (error) {
-        console.error(`Failed to check ${field} availability`, error);
+      } catch (err) {
+        console.error(`Availability check failed for ${field}`, err);
       }
     }, 500);
   };
@@ -69,9 +93,11 @@ export default function RegisterForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+
     if (['account_name', 'email', 'profile_name'].includes(name)) {
       checkAvailability(name, value);
     }
+
     if (name === 'profile_name' || name === 'date_of_birth') {
       const suffix = generateSuffix(
         name === 'profile_name' ? value : form.profile_name,
@@ -87,27 +113,18 @@ export default function RegisterForm() {
     setTouched((prev) => ({ ...prev, [name]: true }));
   };
 
-  const generateSuffix = (profile: string, dob: string) => {
-    if (!profile || !dob) return '';
-    const d = new Date(dob);
-    if (isNaN(d.getTime())) return '';
-    return `#${String(d.getFullYear() % 100)}${d.getMonth() + 1}${d.getDate()}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-    setTouched({}); // Mark all fields touched to show validation errors
+    setTouched({});
     setLoading(true);
 
-    // Validate passwords match
     if (form.password !== form.confirm_password) {
       setErrors({ confirm_password: 'Passwords do not match' });
       setLoading(false);
       return;
     }
 
-    // Age validation
     const dob = new Date(form.date_of_birth);
     const today = new Date();
     const age = today.getFullYear() - dob.getFullYear();
@@ -120,18 +137,27 @@ export default function RegisterForm() {
       return;
     }
 
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          profile_name: form.profile_name + profileSuffix,
+        }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
-    if (data.success) {
-      router.push('/dashboard');
-    } else {
-      alert(data.error || 'Registration failed');
+      const data = await res.json();
+      if (data.success) {
+        router.push('/dashboard');
+      } else {
+        alert(data.error || 'Registration failed.');
+      }
+    } catch (err) {
+      console.error('Registration failed:', err);
+      alert('Unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,6 +166,7 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <h2 className="text-2xl font-bold text-teal-400 text-center">Create Your Account</h2>
 
+        {/* Dynamic Fields */}
         {[
           { label: 'Account Name', name: 'account_name' },
           { label: 'Email', name: 'email', type: 'email' },
@@ -159,7 +186,7 @@ export default function RegisterForm() {
             {touched[name] && errors[name] && (
               <p className="text-red-500 text-sm mt-1">{errors[name]}</p>
             )}
-            {touched[name] && availability[name as keyof typeof availability] === false && (
+            {touched[name] && availability[name as keyof Availability] === false && (
               <p className="text-red-500 text-sm mt-1">{label} is already taken</p>
             )}
           </div>
@@ -237,6 +264,7 @@ export default function RegisterForm() {
           )}
         </div>
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}

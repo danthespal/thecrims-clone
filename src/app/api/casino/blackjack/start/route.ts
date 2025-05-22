@@ -55,6 +55,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     player,
     dealer,
-    casinoBalance: user.casino_balance - bet
+    casinoBalance: user.casino_balance - bet,
   });
 }

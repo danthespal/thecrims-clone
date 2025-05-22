@@ -13,7 +13,11 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { bet, result } = body;
 
-  if (!bet || bet <= 0 || !['win', 'lose', 'draw', 'blackjack'].includes(result.toLowerCase())) {
+  if (
+    !bet ||
+    bet <= 0 ||
+    !['win', 'lose', 'draw', 'blackjack'].includes(result.toLowerCase())
+  ) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 
@@ -54,7 +58,7 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     success: true,
-    payout: payout,
-    casinoBalance: updated.balance
+    payout,
+    casinoBalance: updated.balance,
   });
 }

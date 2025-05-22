@@ -1,4 +1,5 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 
 interface Props {
@@ -22,47 +23,72 @@ export default function CasinoControls({ onSuccess }: Props) {
   const [message, setMessage] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const isValidNumber = (val: string) => !isNaN(Number(val)) && Number(val) > 0;
 
   const fetchHistory = async () => {
-    const res = await fetch('/api/casino/history');
-    const data = await res.json();
-    setTransactions(data.transactions);
-    setTotals(data.totals);
+    try {
+      const res = await fetch('/api/casino/history');
+      const data = await res.json();
+      setTransactions(data.transactions);
+      setTotals(data.totals);
+    } catch (err) {
+      console.error('Failed to load transaction history:', err);
+    }
   };
 
   const handleDeposit = async () => {
+    if (loading || !isValidNumber(deposit)) return;
+    setLoading(true);
     setMessage('');
-    const res = await fetch('/api/casino/deposit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: deposit }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setMessage('✅ Deposit successful');
-      onSuccess?.();
-      fetchHistory();
-      window.dispatchEvent(new Event('user:update'));
-    } else {
-      setMessage(`❌ ${data.error || 'Failed to deposit'}`);
+    try {
+      const res = await fetch('/api/casino/deposit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: deposit }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('✅ Deposit successful');
+        setDeposit('');
+        onSuccess?.();
+        fetchHistory();
+        window.dispatchEvent(new Event('user:update'));
+      } else {
+        setMessage(`❌ ${data.error || 'Failed to deposit'}`);
+      }
+    } catch {
+      setMessage('❌ Error processing deposit');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleWithdraw = async () => {
+    if (loading || !isValidNumber(withdraw)) return;
+    setLoading(true);
     setMessage('');
-    const res = await fetch('/api/casino/withdraw', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: withdraw }),
-    });
-    const data = await res.json();
-    if (data.success) {
-      setMessage('✅ Withdrawal successful');
-      onSuccess?.();
-      fetchHistory();
-      window.dispatchEvent(new Event('user:update'));
-    } else {
-      setMessage(`❌ ${data.error || 'Failed to withdraw'}`);
+    try {
+      const res = await fetch('/api/casino/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: withdraw }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('✅ Withdrawal successful');
+        setWithdraw('');
+        onSuccess?.();
+        fetchHistory();
+        window.dispatchEvent(new Event('user:update'));
+      } else {
+        setMessage(`❌ ${data.error || 'Failed to withdraw'}`);
+      }
+    } catch {
+      setMessage('❌ Error processing withdrawal');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -85,7 +111,8 @@ export default function CasinoControls({ onSuccess }: Props) {
             />
             <button
               onClick={handleDeposit}
-              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded"
+              disabled={loading || !isValidNumber(deposit)}
+              className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded disabled:opacity-50"
             >
               Deposit
             </button>
@@ -101,7 +128,8 @@ export default function CasinoControls({ onSuccess }: Props) {
             />
             <button
               onClick={handleWithdraw}
-              className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded"
+              disabled={loading || !isValidNumber(withdraw)}
+              className="bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded disabled:opacity-50"
             >
               Withdraw
             </button>
