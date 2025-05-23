@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import zxcvbn from 'zxcvbn';
 import toast from 'react-hot-toast';
-
-type Availability = {
-  account_name: boolean | null;
-  email: boolean | null;
-  profile_name: boolean | null;
-};
+import { RegisterSchema } from '@/lib/schemas/registerSchema';
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -26,17 +21,18 @@ export default function RegisterForm() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
-  const [availability, setAvailability] = useState<Availability>({
-    account_name: null,
-    email: null,
-    profile_name: null,
-  });
-
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [profileSuffix, setProfileSuffix] = useState('');
+
+  const [availability, setAvailability] = useState<Record<'account_name' | 'email' | 'profile_name', boolean | null>>({
+    account_name: null,
+    email: null,
+    profile_name: null,
+  });
+
   const debounceTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
@@ -62,7 +58,6 @@ export default function RegisterForm() {
       email: 'check-email',
       profile_name: 'check-profile',
     };
-
     const route = routeMap[field];
     if (!route || !value) return;
 
@@ -75,10 +70,7 @@ export default function RegisterForm() {
         if (field === 'profile_name') {
           const { date_of_birth } = form;
           if (!date_of_birth) return;
-          const query = new URLSearchParams({
-            profile_name: value,
-            date_of_birth,
-          });
+          const query = new URLSearchParams({ profile_name: value, date_of_birth });
           url = `/api/validation/check-profile?${query.toString()}`;
         }
 
@@ -119,25 +111,45 @@ export default function RegisterForm() {
     setLoading(true);
     setErrors({});
 
+    // Check for taken fields
+    if (Object.values(availability).includes(false)) {
+      toast.error('Some fields are already taken');
+      setLoading(false);
+      return;
+    }
+
+    // ✅ Zod validation
+    const result = RegisterSchema.safeParse(form);
+    if (!result.success) {
+      const fieldErrors = result.error.flatten().fieldErrors;
+      const formatted: Record<string, string> = {};
+      Object.entries(fieldErrors).forEach(([field, msgs]) => {
+        if (msgs && msgs[0]) formatted[field] = msgs[0];
+      });
+      setErrors(formatted);
+      toast.error('Please fix validation errors.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(result.data),
       });
 
       const data = await res.json();
       if (!res.ok) {
         if (data.error && typeof data.error === 'object') {
           setErrors(data.error);
-          toast.error('Please correct the highlighted errors.');
+          toast.error('Registration failed.');
           return;
         }
-
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || 'Unknown registration error');
       }
 
-      toast.success('Account created! Redirecting...');
+      toast.success('Account created!');
       router.push('/dashboard');
     } catch (err: unknown) {
       const message =
@@ -151,124 +163,128 @@ export default function RegisterForm() {
   };
 
   return (
-    <div className="space-y-6 max-w-md mx-auto bg-gray-900 p-8 rounded-xl shadow-md border border-gray-800 text-white">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <h2 className="text-2xl font-bold text-teal-400 text-center">Create Your Account</h2>
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-6 max-w-md mx-auto bg-gray-900 p-8 rounded-xl shadow-md border border-gray-800 text-white"
+    >
+      <h2 className="text-2xl font-bold text-teal-400 text-center">Create Your Account</h2>
 
-        {errors.general && (
-          <p className="text-red-500 text-center text-sm">{errors.general}</p>
-        )}
+      {errors.general && (
+        <p className="text-red-500 text-sm text-center -mt-4">{errors.general}</p>
+      )}
 
-        {[
-          { label: 'Account Name', name: 'account_name' },
-          { label: 'Email', name: 'email', type: 'email' },
-          { label: 'Date of Birth', name: 'date_of_birth', type: 'date' },
-        ].map(({ label, name, type = 'text' }) => (
-          <div key={name}>
-            <label className="block mb-1 font-medium">{label}</label>
-            <input
-              name={name}
-              type={type}
-              value={form[name as keyof typeof form]}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              className="w-full p-2 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
-            />
-            {touched[name] && errors[name] && (
-              <p className="text-red-500 text-sm mt-1">{errors[name]}</p>
-            )}
-            {touched[name] && availability[name as keyof Availability] === false && (
-              <p className="text-red-500 text-sm mt-1">{label} is already taken</p>
-            )}
-          </div>
-        ))}
-
-        <div>
-          <label className="block mb-1 font-medium">Password</label>
-          <div className="relative">
-            <input
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={form.password}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              className="w-full p-2 pr-10 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
-            />
-            <button
-              type="button"
-              className="absolute right-2 top-2 text-gray-400 hover:text-white"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-          <p className="text-sm mt-1">Strength: {passwordStrength}/4</p>
-          {touched.password && errors.password && (
-            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Verify Password</label>
-          <div className="relative">
-            <input
-              name="confirm_password"
-              type={showConfirm ? 'text' : 'password'}
-              value={form.confirm_password}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              required
-              className="w-full p-2 pr-10 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
-            />
-            <button
-              type="button"
-              className="absolute right-2 top-2 text-gray-400 hover:text-white"
-              onClick={() => setShowConfirm(!showConfirm)}
-            >
-              {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-          {touched.confirm_password && errors.confirm_password && (
-            <p className="text-red-500 text-sm mt-1">{errors.confirm_password}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Profile Name</label>
+      {[
+        { name: 'account_name', label: 'Account Name' },
+        { name: 'email', label: 'Email', type: 'email' },
+        { name: 'date_of_birth', label: 'Date of Birth', type: 'date' },
+      ].map(({ name, label, type = 'text' }) => (
+        <div key={name}>
+          <label className="block mb-1 font-medium">{label}</label>
           <input
-            name="profile_name"
-            type="text"
-            value={form.profile_name}
+            name={name}
+            type={type}
+            value={form[name as keyof typeof form]}
             onChange={handleChange}
             onBlur={handleBlur}
             required
             className="w-full p-2 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
           />
-          {availability.profile_name === false && (
-            <p className="text-yellow-500 text-sm mt-1">Suffix will be added: profile name is taken</p>
+          {touched[name] && errors[name] && (
+            <p className="text-red-500 text-sm mt-1">{errors[name]}</p>
           )}
-          {profileSuffix && (
-            <p className="text-sm text-teal-300 mt-1">
-              Final profile name: <strong>{form.profile_name}{profileSuffix}</strong>
-            </p>
-          )}
-          {touched.profile_name && errors.profile_name && (
-            <p className="text-red-500 text-sm mt-1">{errors.profile_name}</p>
+          {availability[name as keyof typeof availability] === false && (
+            <p className="text-yellow-500 text-sm mt-1">{label} is already taken</p>
           )}
         </div>
+      ))}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full text-white font-bold py-2 px-4 rounded transition duration-200 ${
-            loading ? 'bg-teal-700 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-500'
-          }`}
-        >
-          {loading ? 'Registering...' : 'Register'}
-        </button>
-      </form>
-    </div>
+      {/* Password */}
+      <div>
+        <label className="block mb-1 font-medium">Password</label>
+        <div className="relative">
+          <input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            value={form.password}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            required
+            className="w-full p-2 pr-10 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
+          />
+          <button
+            type="button"
+            className="absolute right-2 top-2 text-gray-400 hover:text-white"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+        <p className="text-sm mt-1">Strength: {passwordStrength}/4</p>
+        {touched.password && errors.password && (
+          <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+        )}
+      </div>
+
+      {/* Confirm Password */}
+      <div>
+        <label className="block mb-1 font-medium">Verify Password</label>
+        <div className="relative">
+          <input
+            name="confirm_password"
+            type={showConfirm ? 'text' : 'password'}
+            value={form.confirm_password}
+            onChange={handleChange}
+            onBlur={handleBlur}
+            required
+            className="w-full p-2 pr-10 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
+          />
+          <button
+            type="button"
+            className="absolute right-2 top-2 text-gray-400 hover:text-white"
+            onClick={() => setShowConfirm(!showConfirm)}
+          >
+            {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+        {touched.confirm_password && errors.confirm_password && (
+          <p className="text-red-500 text-sm mt-1">{errors.confirm_password}</p>
+        )}
+      </div>
+
+      {/* Profile Name */}
+      <div>
+        <label className="block mb-1 font-medium">Profile Name</label>
+        <input
+          name="profile_name"
+          type="text"
+          value={form.profile_name}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          required
+          className="w-full p-2 rounded bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-teal-500"
+        />
+        {profileSuffix && (
+          <p className="text-sm text-teal-300 mt-1">
+            Final profile name: <strong>{form.profile_name}{profileSuffix}</strong>
+          </p>
+        )}
+        {availability.profile_name === false && (
+          <p className="text-yellow-500 text-sm mt-1">Profile name is already taken</p>
+        )}
+        {touched.profile_name && errors.profile_name && (
+          <p className="text-red-500 text-sm mt-1">{errors.profile_name}</p>
+        )}
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading}
+        className={`w-full text-white font-bold py-2 px-4 rounded transition duration-200 ${
+          loading ? 'bg-teal-700 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-500'
+        }`}
+      >
+        {loading ? 'Registering...' : 'Register'}
+      </button>
+    </form>
   );
 }
