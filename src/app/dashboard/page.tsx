@@ -11,6 +11,7 @@ import StreetPage from '@/components/dashboard/Street/Page';
 import Robbery from '@/components/dashboard/Robbery/Robbery';
 import Casino from '@/app/dashboard/Casino/page';
 import CharacterInventory from '@/components/dashboard/Inventory/CharacterInventory';
+import ProfileSettings from '@/components/dashboard/Profile/ProfileSettings';
 
 export default function DashboardPage() {
   const [active, setActive] = useState('Streets');
@@ -45,13 +46,14 @@ export default function DashboardPage() {
     Streets: <StreetPage />,
     Robbery: <Robbery />,
     Casino: <Casino />,
+    'Profile Settings': <ProfileSettings />, 
   };
 
   let ActiveComponent: JSX.Element;
 
   if (tabComponents[active]) {
     ActiveComponent = tabComponents[active];
-  } else if (['Hookers', 'Profile Status', 'Profile Settings'].includes(active)) {
+  } else if (['Hookers', 'Profile Status'].includes(active)) {
     ActiveComponent = (
       <p className="text-gray-300">
         This is a placeholder for the <strong>{active}</strong> feature.
