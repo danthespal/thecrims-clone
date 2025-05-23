@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function LoginForm() {
   const [accountName, setAccountName] = useState('');
@@ -19,19 +20,31 @@ export default function LoginForm() {
     setError('');
     setLoading(true);
 
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ account_name: accountName, password }),
-    });
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_name: accountName, password }),
+      });
 
-    setLoading(false);
-
-    if (res.ok) {
-      window.location.href = '/dashboard';
-    } else {
       const data = await res.json();
-      setError(data.error || 'Login failed');
+      setLoading(false);
+
+      if (!res.ok) {
+        setError(data.error || 'Login failed');
+        toast.error(data.error || 'Login failed');
+        return;
+      }
+
+      toast.success('Logged in successfully!');
+      window.location.href = '/dashboard';
+    } catch (err: unknown) {
+      setLoading(false);
+      const msg =
+        err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(msg);
+      toast.error(msg);
+      console.error('Login error:', err);
     }
   };
 
@@ -46,7 +59,9 @@ export default function LoginForm() {
 
       {/* Account Name */}
       <div>
-        <label htmlFor="account_name" className="block mb-1 font-medium">Account Name</label>
+        <label htmlFor="account_name" className="block mb-1 font-medium">
+          Account Name
+        </label>
         <input
           id="account_name"
           type="text"
@@ -59,7 +74,9 @@ export default function LoginForm() {
 
       {/* Password */}
       <div>
-        <label htmlFor="password" className="block mb-1 font-medium">Password</label>
+        <label htmlFor="password" className="block mb-1 font-medium">
+          Password
+        </label>
         <div className="relative">
           <input
             id="password"

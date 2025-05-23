@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import zxcvbn from 'zxcvbn';
+import toast from 'react-hot-toast';
 
 type Availability = {
   account_name: boolean | null;
@@ -115,47 +116,35 @@ export default function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrors({});
-    setTouched({});
     setLoading(true);
-
-    if (form.password !== form.confirm_password) {
-      setErrors({ confirm_password: 'Passwords do not match' });
-      setLoading(false);
-      return;
-    }
-
-    const dob = new Date(form.date_of_birth);
-    const today = new Date();
-    const age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    const underage = age < 18 || (age === 18 && m < 0) || (age === 18 && m === 0 && today.getDate() < dob.getDate());
-
-    if (underage) {
-      setErrors({ date_of_birth: 'You must be at least 18 years old to register.' });
-      setLoading(false);
-      return;
-    }
+    setErrors({});
 
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          profile_name: form.profile_name + profileSuffix,
-        }),
+        body: JSON.stringify(form),
       });
 
       const data = await res.json();
-      if (data.success) {
-        router.push('/dashboard');
-      } else {
-        alert(data.error || 'Registration failed.');
+      if (!res.ok) {
+        if (data.error && typeof data.error === 'object') {
+          setErrors(data.error);
+          toast.error('Please correct the highlighted errors.');
+          return;
+        }
+
+        throw new Error(data.error || 'Registration failed');
       }
-    } catch (err) {
-      console.error('Registration failed:', err);
-      alert('Unexpected error occurred.');
+
+      toast.success('Account created! Redirecting...');
+      router.push('/dashboard');
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'An unknown error occurred';
+      setErrors({ general: message });
+      toast.error(message);
+      console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
@@ -166,7 +155,10 @@ export default function RegisterForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <h2 className="text-2xl font-bold text-teal-400 text-center">Create Your Account</h2>
 
-        {/* Dynamic Fields */}
+        {errors.general && (
+          <p className="text-red-500 text-center text-sm">{errors.general}</p>
+        )}
+
         {[
           { label: 'Account Name', name: 'account_name' },
           { label: 'Email', name: 'email', type: 'email' },
@@ -192,7 +184,6 @@ export default function RegisterForm() {
           </div>
         ))}
 
-        {/* Password */}
         <div>
           <label className="block mb-1 font-medium">Password</label>
           <div className="relative">
@@ -214,9 +205,11 @@ export default function RegisterForm() {
             </button>
           </div>
           <p className="text-sm mt-1">Strength: {passwordStrength}/4</p>
+          {touched.password && errors.password && (
+            <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+          )}
         </div>
 
-        {/* Confirm Password */}
         <div>
           <label className="block mb-1 font-medium">Verify Password</label>
           <div className="relative">
@@ -242,7 +235,6 @@ export default function RegisterForm() {
           )}
         </div>
 
-        {/* Profile Name */}
         <div>
           <label className="block mb-1 font-medium">Profile Name</label>
           <input
@@ -262,9 +254,11 @@ export default function RegisterForm() {
               Final profile name: <strong>{form.profile_name}{profileSuffix}</strong>
             </p>
           )}
+          {touched.profile_name && errors.profile_name && (
+            <p className="text-red-500 text-sm mt-1">{errors.profile_name}</p>
+          )}
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
