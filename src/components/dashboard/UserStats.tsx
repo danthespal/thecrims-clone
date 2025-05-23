@@ -2,28 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-interface User {
-  profile_name: string;
-  profile_suffix: string;
-  level: number;
-  money: number;
-  respect: number;
-  will: number;
-}
-
-interface Settings {
-  max_will: number;
-  regen_rate_per_minute: number;
-}
+import useSession from '@/hooks/useSession';
 
 export default function UserStats() {
-  const [user, setUser] = useState<User | null>(null);
-  const [settings, setSettings] = useState<Settings | null>(null);
   const [timeToFull, setTimeToFull] = useState('');
   const [levelProgress, setLevelProgress] = useState<number | null>(null);
   const [nextLevelRespect, setNextLevelRespect] = useState<number | null>(null);
+  const { session } = useSession();
   const router = useRouter();
+
+  const user = session?.user;
+  const settings = session?.settings;
 
   const calculateTimeToFull = (current: number, max: number, rate: number): string => {
     const missing = max - current;
@@ -35,62 +24,25 @@ export default function UserStats() {
   };
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    if (user && settings) {
+      const time = calculateTimeToFull(user.will, settings.max_will, settings.regen_rate_per_minute);
+      setTimeToFull(time);
 
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/user/session');
-        const data = await res.json();
-        if (!data.authenticated) return router.push('/');
-        setUser(data.user);
-        setSettings(data.settings);
-
-        const time = calculateTimeToFull(
-          data.user.will,
-          data.settings.max_will,
-          data.settings.regen_rate_per_minute
-        );
-        setTimeToFull(time);
-
-        const nextLevel = data.user.level + 1;
-        const levelRes = await fetch(`/api/level/requirement?level=${nextLevel}`);
-        const levelData = await levelRes.json();
-        if (levelData.respect_required) {
-          const progress = Math.min(
-            100,
-            (data.user.respect / levelData.respect_required) * 100
-          );
-          setLevelProgress(progress);
-          setNextLevelRespect(levelData.respect_required);
-        } else {
-          setLevelProgress(100);
-          setNextLevelRespect(null);
-        }
-      } catch (err) {
-        console.error('Failed to fetch session or level data:', err);
-      }
-    };
-
-    const startInterval = () => {
-      clearInterval(interval);
-      interval = setInterval(fetchData, 30000);
-    };
-
-    fetchData();
-    startInterval();
-
-    const onUpdate = () => {
-      fetchData();
-      startInterval(); // Reset interval after user:update
-    };
-
-    window.addEventListener('user:update', onUpdate);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('user:update', onUpdate);
-    };
-  }, [router]);
+      const nextLevel = user.level + 1;
+      fetch(`/api/level/requirement?level=${nextLevel}`)
+        .then((res) => res.json())
+        .then((levelData) => {
+          if (levelData.respect_required) {
+            const progress = Math.min(100, (user.respect / levelData.respect_required) * 100);
+            setLevelProgress(progress);
+            setNextLevelRespect(levelData.respect_required);
+          } else {
+            setLevelProgress(100);
+            setNextLevelRespect(null);
+          }
+        });
+    }
+  }, [user, settings]);
 
   if (!user || !settings) return null;
 

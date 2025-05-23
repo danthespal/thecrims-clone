@@ -138,7 +138,10 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshState();
+    const hasSession = document.cookie.includes('session-token');
+    if (hasSession) {
+      refreshState();
+    }
   }, []);
 
   return (

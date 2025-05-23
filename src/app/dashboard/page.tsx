@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useSession from '@/hooks/useSession';
 import type { JSX } from 'react';
 
 import UserStats from '@/components/dashboard/UserStats';
@@ -13,36 +14,23 @@ import CharacterInventory from '@/components/dashboard/Inventory/CharacterInvent
 
 export default function DashboardPage() {
   const [active, setActive] = useState('Streets');
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { session, loading } = useSession();
 
-  // Load last selected tab from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('activeTab');
     if (saved) setActive(saved);
   }, []);
 
-  // Save tab selection to localStorage
   useEffect(() => {
     localStorage.setItem('activeTab', active);
   }, [active]);
 
-  // Session check
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const res = await fetch('/api/user/session');
-        const data = await res.json();
-        if (!data.authenticated) router.push('/');
-        else setLoading(false);
-      } catch (error) {
-        console.error('Session check failed:', error);
-        router.push('/');
-      }
-    };
-
-    checkSession();
-  }, [router]);
+    if (!loading && !session?.authenticated) {
+      router.push('/');
+    }
+  }, [loading, session, router]);
 
   if (loading) {
     return (
@@ -52,7 +40,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Map of active tab to component
   const tabComponents: Record<string, JSX.Element> = {
     Inventory: <CharacterInventory />,
     Streets: <StreetPage />,
@@ -60,23 +47,18 @@ export default function DashboardPage() {
     Casino: <Casino />,
   };
 
-  // Final resolved tab component
   let ActiveComponent: JSX.Element;
 
   if (tabComponents[active]) {
     ActiveComponent = tabComponents[active];
-  } else if (
-    ['Hookers', 'Profile Status', 'Profile Settings'].includes(active)
-  ) {
+  } else if (['Hookers', 'Profile Status', 'Profile Settings'].includes(active)) {
     ActiveComponent = (
       <p className="text-gray-300">
         This is a placeholder for the <strong>{active}</strong> feature.
       </p>
     );
   } else {
-    ActiveComponent = (
-      <p className="text-gray-300">Unknown section selected.</p>
-    );
+    ActiveComponent = <p className="text-gray-300">Unknown section selected.</p>;
   }
 
   return (

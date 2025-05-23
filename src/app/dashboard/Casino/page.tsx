@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import useSession from '@/hooks/useSession';
 import BlackjackGame from '@/components/dashboard/Casino/BlackjackGame';
 import CasinoControls from '@/components/dashboard/Casino/CasinoControls';
 
@@ -8,28 +9,14 @@ const TABS = ['Casino Wallet', 'Blackjack'];
 
 export default function Casino() {
   const [activeTab, setActiveTab] = useState('Casino Wallet');
-  const [casinoBalance, setCasinoBalance] = useState<number | null>(null);
-
-  const fetchBalance = async () => {
-    try {
-      const res = await fetch('/api/user/session');
-      const data = await res.json();
-      if (data?.user?.casino_balance != null) {
-        setCasinoBalance(data.user.casino_balance);
-      }
-    } catch (err) {
-      console.error('Failed to fetch casino balance:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchBalance();
-  }, []);
+  const { session } = useSession();
+  const casinoBalance = session?.user?.casino_balance ?? null;
 
   return (
     <div className="space-y-6">
       <div className="text-sm text-gray-400">
-        Casino Wallet Balance: <span className="text-white font-semibold">${casinoBalance ?? '...'}</span>
+        Casino Wallet Balance:{' '}
+        <span className="text-white font-semibold">${casinoBalance ?? '...'}</span>
       </div>
 
       <div className="flex space-x-4 border-b border-gray-700 pb-2">
@@ -49,8 +36,8 @@ export default function Casino() {
       </div>
 
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-8">
-        {activeTab === 'Casino Wallet' && <CasinoControls onSuccess={fetchBalance} />}
-        {activeTab === 'Blackjack' && <BlackjackGame onResult={fetchBalance} />}
+        {activeTab === 'Casino Wallet' && <CasinoControls onSuccess={() => {}} />}
+        {activeTab === 'Blackjack' && <BlackjackGame onResult={() => {}} />}
       </div>
     </div>
   );
