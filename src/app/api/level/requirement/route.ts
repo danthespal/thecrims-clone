@@ -1,25 +1,22 @@
 import { NextResponse } from 'next/server';
-import sql from '@/lib/db';
+import levelRequirements from '@/data/level-requirements.json';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const level = parseInt(searchParams.get('level') || '0', 10);
 
-    if (isNaN(level) || level < 1) {
+    if (isNaN(level) || level < 1 || level > levelRequirements.length) {
       return NextResponse.json({ error: 'Invalid level' }, { status: 400 });
     }
 
-    const [row] = await sql`
-      SELECT respect_required FROM "LevelRequirements"
-      WHERE level = ${level}
-    `;
+    const requirement = levelRequirements.find((l) => l.level === level);
 
-    if (!row) {
+    if (!requirement) {
       return NextResponse.json({ error: 'Level not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ respect_required: row.respect_required });
+    return NextResponse.json({ respect_required: requirement.respect_required });
   } catch (err) {
     console.error('Level requirement fetch error:', err);
     return NextResponse.json({ error: 'Failed to fetch level requirement' }, { status: 500 });

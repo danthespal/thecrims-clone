@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import sql from '@/lib/db';
@@ -25,19 +24,8 @@ export async function createSession(userId: number): Promise<NextResponse> {
   return response;
 }
 
-export async function destroySession(): Promise<NextResponse> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get(SESSION_COOKIE_NAME);
-
-  const response = NextResponse.json({ success: true });
-
-  if (session?.value) {
-    await sql`DELETE FROM "Sessions" WHERE id = ${session.value}`;
-    response.cookies.set(SESSION_COOKIE_NAME, '', {
-      path: '/',
-      maxAge: 0,
-    });
-  }
-
-  return response;
+export async function destroySession(sessionId: string): Promise<void> {
+  await sql`
+    DELETE FROM "Sessions" WHERE id = ${sessionId}
+  `;
 }

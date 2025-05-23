@@ -1,16 +1,12 @@
 import sql from '@/lib/db';
+import levelRequirements from '@/data/level-requirements.json';
 
 export async function checkLevelUp(userId: number, currentLevel: number, currentRespect: number) {
   let level = currentLevel;
 
   while (true) {
-    const [nextLevel] = await sql`
-      SELECT respect_required FROM "LevelRequirements"
-      WHERE level = ${level + 1}
-    `;
-
-    if (!nextLevel || currentRespect < nextLevel.respect_required) break;
-
+    const next = levelRequirements.find((l) => l.level === level + 1);
+    if (!next || currentRespect < next.respect_required) break;
     level += 1;
   }
 

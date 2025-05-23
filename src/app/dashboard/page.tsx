@@ -6,10 +6,10 @@ import type { JSX } from 'react';
 
 import UserStats from '@/components/dashboard/UserStats';
 import SidebarMenu from '@/components/dashboard/SidebarMenu';
-import Streets from '@/components/dashboard/Street/Streets';
+import StreetPage from '@/components/dashboard/Street/Page';
 import Robbery from '@/components/dashboard/Robbery/Robbery';
 import Casino from '@/app/dashboard/Casino/page';
-import CharacterInventory from '@/components/dashboard/User/CharacterInventory';
+import CharacterInventory from '@/components/dashboard/Inventory/CharacterInventory';
 
 export default function DashboardPage() {
   const [active, setActive] = useState('Streets');
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center bg-black text-white">
-        <p className="text-gray-400">Loading dashboard...</p>
+        <p className="text-gray-400 animate-pulse">Loading dashboard...</p>
       </main>
     );
   }
@@ -55,20 +55,29 @@ export default function DashboardPage() {
   // Map of active tab to component
   const tabComponents: Record<string, JSX.Element> = {
     Inventory: <CharacterInventory />,
-    Streets: <Streets />,
+    Streets: <StreetPage />,
     Robbery: <Robbery />,
     Casino: <Casino />,
   };
 
-  const ActiveComponent =
-    tabComponents[active] ??
-    ['Hookers', 'Profile Status', 'Profile Settings'].includes(active) ? (
+  // Final resolved tab component
+  let ActiveComponent: JSX.Element;
+
+  if (tabComponents[active]) {
+    ActiveComponent = tabComponents[active];
+  } else if (
+    ['Hookers', 'Profile Status', 'Profile Settings'].includes(active)
+  ) {
+    ActiveComponent = (
       <p className="text-gray-300">
         This is a placeholder for the <strong>{active}</strong> feature.
       </p>
-    ) : (
+    );
+  } else {
+    ActiveComponent = (
       <p className="text-gray-300">Unknown section selected.</p>
     );
+  }
 
   return (
     <main className="min-h-screen flex bg-black text-white">

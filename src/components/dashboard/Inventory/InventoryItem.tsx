@@ -1,7 +1,7 @@
 'use client';
 
 import { useEquipmentContext } from '@/context/EquipmentContext';
-import type { Item } from '@/lib/items';
+import type { Item } from '@/lib/itemLoader';
 
 interface Props {
   item: Item;
@@ -10,19 +10,23 @@ interface Props {
 export default function InventoryItem({ item }: Props) {
   const { equipItem } = useEquipmentContext();
 
-  const tryEquip = () => {
-    const slots = [
-      'helmet',
-      'armor',
-      'boots',
-      'amulet',
-      'ring',
-      'left_hand',
-      'right_hand',
-    ] as const;
+  const slotMap: Record<Item['type'], keyof ReturnType<typeof useEquipmentContext>['equipment']> = {
+    helmet: 'helmet',
+    armor: 'armor',
+    boots: 'boots',
+    amulet: 'amulet',
+    ring: 'ring',
+    weapon: 'left_hand',
+    gloves: 'right_hand',
+  };
 
-    for (const slot of slots) {
+  const tryEquip = () => {
+    const slot = slotMap[item.type as keyof typeof slotMap];
+    if (slot) {
+      console.log(`🧠 Equipping item ID ${item.id} into slot "${slot}"`);
       equipItem(slot, item);
+    } else {
+      console.warn(`❌ No slot defined for item type: ${item.type}`);
     }
   };
 
