@@ -197,8 +197,10 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
             <p className="mt-4">Dealer&apos;s Hand:</p>
             <div className="flex gap-2 mb-1">
               {phase === 'player' && dealerHand.length === 2
-                ? <><CardImage card={dealerHand[1]} /><img src="/cards/back.png" alt="Card back" className="w-[80px] h-[120px] rounded shadow-md" /></>
-                : revealedDealerCards.map((card, i) => (<CardImage key={i} card={card} />))}
+                ? <><CardImage card={dealerHand[1]} /><CardImage card={dealerHand[0]} faceDown /></>
+                : revealedDealerCards.map((card, i) => (
+                <CardImage key={i} card={card} delay={i * 0.2} />
+              ))}
             </div>
             <p className="text-sm">Total: {phase === 'done' ? dealerScore : '???'}</p>
           </div>
