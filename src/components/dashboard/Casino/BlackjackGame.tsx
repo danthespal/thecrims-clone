@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import toast from 'react-hot-toast';
+import { useState } from "react";
+import toast from "react-hot-toast";
+import CardImage from "@/components/dashboard/Casino/CardImage";
 
 interface BlackjackGameProps {
   onResult?: () => void;
@@ -30,12 +31,10 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
       toast.error('Please select a valid bet.');
       return;
     }
-
     if (casinoBalance !== null && bet > casinoBalance) {
       toast.error('You do not have enough funds for this bet.');
       return;
     }
-
     setLoading(true);
     setPhase('idle');
     setPlayerHand([]);
@@ -50,9 +49,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
         body: JSON.stringify({ bet }),
       });
       const data = await res.json();
-      if (!res.ok || data?.error) {
-        throw new Error(data?.error || 'Server rejected the bet.');
-      }
+      if (!res.ok || data?.error) throw new Error(data?.error || 'Server rejected the bet.');
 
       setPlayerHand(data.player);
       setDealerHand(data.dealer);
@@ -94,6 +91,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
 
       if (data.bust) {
         toast.error('You busted! 💥');
+        setRevealedDealerCards(dealerHand);
         setPhase('done');
         await resolveResult(data.updatedHand, dealerHand, round - 1);
       }
@@ -111,7 +109,6 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
         body: JSON.stringify({ dealerHand }),
       });
       const data = await res.json();
-
       if (!data || data.error) throw new Error(data?.error || 'Stand failed');
 
       setDealerHand(data.dealerHand);
@@ -137,12 +134,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
         setNetGain(data.payout);
         setResultText(data.validatedResult.toUpperCase());
         setHistory((prev) => [
-          {
-            round: roundNumber,
-            player: [...playerCards],
-            dealer: [...dealerCards],
-            result: data.validatedResult.toUpperCase(),
-          },
+          { round: roundNumber, player: [...playerCards], dealer: [...dealerCards], result: data.validatedResult.toUpperCase() },
           ...prev,
         ].slice(0, 5));
         toast.success(`Result: ${data.validatedResult.toUpperCase()} — ${data.payout > 0 ? '+' + data.payout : 'No win'}`);
@@ -155,8 +147,6 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
     }
   };
 
-  const formatCard = (card: string) => card;
-
   return (
     <div className="space-y-6 text-white">
       <div className="space-y-2">
@@ -168,9 +158,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
               onClick={() => setBet(chip)}
               disabled={casinoBalance !== null && chip > casinoBalance}
               className={`px-4 py-2 rounded font-bold border ${
-                bet === chip
-                  ? 'bg-yellow-400 text-black border-yellow-500'
-                  : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+                bet === chip ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
               } ${casinoBalance !== null && chip > casinoBalance ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               ${chip}
@@ -185,11 +173,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
           disabled={loading || (casinoBalance !== null && casinoBalance <= 0)}
           className="mt-4 bg-green-600 hover:bg-green-500 px-6 py-2 rounded font-semibold disabled:opacity-50"
         >
-          {casinoBalance !== null && casinoBalance <= 0
-            ? 'Insufficient Funds'
-            : loading
-            ? 'Dealing...'
-            : 'Start Game'}
+          {casinoBalance !== null && casinoBalance <= 0 ? 'Insufficient Funds' : loading ? 'Dealing...' : 'Start Game'}
         </button>
       )}
 
@@ -204,25 +188,25 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
         <div className="mt-6 bg-gray-900 p-4 rounded border border-gray-700 space-y-4">
           <div>
             <h3 className="text-lg font-bold text-teal-400">Round {round - 1} - Blackjack</h3>
-            <p>Your Hand: {playerHand.map(formatCard).join(' ')} (Total: {playerScore})</p>
+            <p>Your Hand:</p>
+            <div className="flex gap-2 mb-1">
+              {playerHand.map((card, i) => (<CardImage key={i} card={card} />))}
+            </div>
+            <p className="text-sm mb-2">Total: {playerScore}</p>
 
-            <p>
-              Dealer&apos;s Hand:{' '}
+            <p className="mt-4">Dealer&apos;s Hand:</p>
+            <div className="flex gap-2 mb-1">
               {phase === 'player' && dealerHand.length === 2
-                ? `${formatCard(dealerHand[1])} 🂠`
-                : revealedDealerCards.map(formatCard).join(' ')}
-              {phase === 'done' && ` (Total: ${dealerScore})`}
-            </p>
+                ? <><CardImage card={dealerHand[1]} /><img src="/cards/back.png" alt="Card back" className="w-[80px] h-[120px] rounded shadow-md" /></>
+                : revealedDealerCards.map((card, i) => (<CardImage key={i} card={card} />))}
+            </div>
+            <p className="text-sm">Total: {phase === 'done' ? dealerScore : '???'}</p>
           </div>
 
           {phase === 'done' && (
             <div className="animate-pulse">
-              <p className="text-lg font-bold">
-                🎲 Result: {resultText === 'BLACKJACK' ? 'BLACKJACK 🎉' : resultText}
-              </p>
-              {netGain !== null && (
-                <p className="text-sm text-gray-300">{netGain > 0 ? `+${netGain}` : `${netGain}`} 💰</p>
-              )}
+              <p className="text-lg font-bold">🎲 Result: {resultText === 'BLACKJACK' ? 'BLACKJACK 🎉' : resultText}</p>
+              {netGain !== null && <p className="text-sm text-gray-300">{netGain > 0 ? `+${netGain}` : `${netGain}`} 💰</p>}
               <p>💰 Your balance: ${casinoBalance}</p>
               <button onClick={startGame} className="mt-2 bg-teal-600 hover:bg-teal-500 px-4 py-2 rounded">Play Again</button>
             </div>
@@ -236,7 +220,8 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
           <ul className="space-y-1 text-sm text-gray-300">
             {history.map((h, idx) => (
               <li key={idx} className="border-b border-gray-700 pb-1">
-                <span className="text-teal-500 font-semibold">Round {h.round}:</span> 🧑 {h.player.map(formatCard).join(' ')} vs 🃏 {h.dealer.map(formatCard).join(' ')} —
+                <span className="text-teal-500 font-semibold">Round {h.round}:</span>
+                🧑 {h.player.join(' ')} vs 🃏 {h.dealer.join(' ')} —
                 <span className="ml-2 font-bold text-teal-400">{h.result}</span>
               </li>
             ))}
