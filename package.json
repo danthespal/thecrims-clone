@@ -17,6 +17,7 @@
     "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hot-toast": "^2.5.2",
     "zxcvbn": "^4.4.2"
   },
   "devDependencies": {

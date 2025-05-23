@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
-import { drawCard } from '@/lib/blackjackUtils'; // ✅ clean import
+import { drawCard, calculateScore } from '@/lib/blackjackUtils';
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -12,9 +12,9 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const bet = parseInt(body.bet, 10);
+  const bet = Number(body.bet);
 
-  if (!bet || bet <= 0) {
+  if (!Number.isInteger(bet) || bet <= 0) {
     return NextResponse.json({ error: 'Invalid bet amount' }, { status: 400 });
   }
 
@@ -39,10 +39,14 @@ export async function POST(req: Request) {
 
   const player = [drawCard(), drawCard()];
   const dealer = [drawCard(), drawCard()];
+  const playerScore = calculateScore(player);
+  const dealerScore = calculateScore(dealer);
 
   return NextResponse.json({
     player,
     dealer,
+    playerScore,
+    dealerScore,
     casinoBalance: user.casino_balance - bet,
   });
 }

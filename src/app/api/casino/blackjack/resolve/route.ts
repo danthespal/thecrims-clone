@@ -14,12 +14,9 @@ export async function POST(req: Request) {
   const { bet, playerHand, dealerHand } = await req.json();
 
   if (
-    !bet ||
-    bet <= 0 ||
-    !Array.isArray(playerHand) ||
-    !Array.isArray(dealerHand) ||
-    playerHand.some(card => typeof card !== 'string') ||
-    dealerHand.some(card => typeof card !== 'string')
+    !bet || bet <= 0 ||
+    !Array.isArray(playerHand) || playerHand.some(card => typeof card !== 'string') ||
+    !Array.isArray(dealerHand) || dealerHand.some(card => typeof card !== 'string')
   ) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
@@ -51,15 +48,14 @@ export async function POST(req: Request) {
 
   let payout = 0;
   switch (validatedResult) {
-    case 'win':
     case 'blackjack':
+      payout = Math.floor(bet * 2.5);
+      break;
+    case 'win':
       payout = bet * 2;
       break;
     case 'draw':
       payout = bet;
-      break;
-    case 'lose':
-      payout = 0;
       break;
   }
 
