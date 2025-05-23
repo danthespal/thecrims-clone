@@ -6,32 +6,6 @@ interface BlackjackGameProps {
   onResult?: () => void;
 }
 
-const CARD_VALUES: Record<string, number> = {
-  2: 2, 3: 3, 4: 4, 5: 5, 6: 6,
-  7: 7, 8: 8, 9: 9, 10: 10,
-  J: 10, Q: 10, K: 10, A: 11,
-};
-
-const drawCard = (): string => {
-  const faces = Object.keys(CARD_VALUES);
-  const random = Math.floor(Math.random() * faces.length);
-  return faces[random];
-};
-
-const calculateScore = (hand: string[]) => {
-  let total = 0;
-  let aces = 0;
-  for (const card of hand) {
-    total += CARD_VALUES[card];
-    if (card === 'A') aces++;
-  }
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces--;
-  }
-  return total;
-};
-
 export default function BlackjackGame({ onResult }: BlackjackGameProps) {
   const chips = [10, 50, 100, 250, 500];
   const [bet, setBet] = useState(10);
@@ -71,13 +45,12 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
 
       setPlayerHand(data.player);
       setDealerHand(data.dealer);
-      const score = calculateScore(data.player);
-      setPlayerScore(score);
+      setPlayerScore(data.playerScore);
       setCasinoBalance(data.casinoBalance);
       setRound((prev) => prev + 1);
       onResult?.();
 
-      if (score === 21 && data.player.length === 2) {
+      if (data.playerScore === 21 && data.player.length === 2) {
         setResultText('BLACKJACK');
         resolveResult('BLACKJACK');
         setPhase('done');
@@ -89,6 +62,73 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const hit = async () => {
+    try {
+      const res = await fetch('/api/casino/blackjack/hit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hand: playerHand }),
+      });
+      const data = await res.json();
+      if (!data || data.error) throw new Error(data?.error || 'Hit failed');
+
+      setPlayerHand(data.updatedHand);
+      setPlayerScore(data.score);
+
+      if (data.bust) {
+        setDealerScore(data.dealerScore);
+        determineWinner(data.dealerScore, data.score);
+      }
+    } catch (err) {
+      console.error('Hit error:', err);
+    }
+  };
+
+  const stand = async () => {
+    setPhase('dealer');
+    try {
+      const res = await fetch('/api/casino/blackjack/stand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealerHand }),
+      });
+      const data = await res.json();
+
+      if (!data || data.error) throw new Error(data?.error || 'Stand failed');
+
+      setDealerHand(data.dealerHand);
+      setRevealedDealerCards(data.dealerHand);
+      setDealerScore(data.dealerScore);
+      determineWinner(data.dealerScore, playerScore);
+    } catch (err) {
+      console.error('Stand error:', err);
+    }
+  };
+
+  const determineWinner = (finalDealerScore: number, finalPlayerScore: number) => {
+    let outcome = '';
+
+    if (finalPlayerScore > 21) {
+      outcome = 'LOSE';
+    } else if (finalDealerScore > 21) {
+      outcome = 'WIN';
+    } else if (finalPlayerScore > finalDealerScore) {
+      outcome = 'WIN';
+    } else if (finalPlayerScore < finalDealerScore) {
+      outcome = 'LOSE';
+    } else {
+      outcome = 'DRAW';
+    }
+
+    setResultText(outcome);
+    setPhase('done');
+    setHistory((prev) => [
+      { round: round - 1, player: playerHand, dealer: dealerHand, result: outcome },
+      ...prev,
+    ].slice(0, 5));
+    resolveResult(outcome);
   };
 
   const resolveResult = async (outcome: string) => {
@@ -110,66 +150,6 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
     } catch (error) {
       console.error('Resolve error:', error);
     }
-  };
-
-  const hit = () => {
-    const newCard = drawCard();
-    const newHand = [...playerHand, newCard];
-    const newScore = calculateScore(newHand);
-    setPlayerHand(newHand);
-    setPlayerScore(newScore);
-    if (newScore > 21) {
-      setDealerScore(calculateScore(dealerHand));
-      determineWinner(calculateScore(dealerHand));
-    }
-  };
-
-  const stand = () => {
-    setPhase('dealer');
-    const dealer = [...dealerHand];
-    let score = calculateScore(dealer);
-    const revealAndPlay = async () => {
-      setRevealedDealerCards([]);
-      for (let i = 0; i < dealer.length; i++) {
-        await new Promise((r) => setTimeout(r, 400));
-        setRevealedDealerCards((prev) => [...prev, dealer[i]]);
-      }
-      while (score < 17) {
-        const card = drawCard();
-        dealer.push(card);
-        score = calculateScore(dealer);
-        setDealerHand([...dealer]);
-        await new Promise((r) => setTimeout(r, 400));
-        setRevealedDealerCards([...dealer]);
-      }
-      setDealerScore(score);
-      determineWinner(score);
-    };
-    revealAndPlay();
-  };
-
-  const determineWinner = (finalDealerScore: number) => {
-    let outcome = '';
-
-    if (playerScore > 21) {
-      outcome = 'LOSE';
-    } else if (finalDealerScore > 21) {
-      outcome = 'WIN';
-    } else if (playerScore > finalDealerScore) {
-      outcome = 'WIN';
-    } else if (playerScore < finalDealerScore) {
-      outcome = 'LOSE';
-    } else {
-      outcome = 'DRAW';
-    }
-
-    setResultText(outcome);
-    setPhase('done');
-    setHistory((prev) => [
-      { round: round - 1, player: playerHand, dealer: dealerHand, result: outcome },
-      ...prev
-    ].slice(0, 5));
-    resolveResult(outcome);
   };
 
   const formatCard = (card: string) => {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
+import { calculateScore } from '@/lib/blackjackUtils';
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -10,15 +11,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { bet, result } = body;
+  const { bet, playerHand, dealerHand } = await req.json();
 
   if (
     !bet ||
     bet <= 0 ||
-    !['win', 'lose', 'draw', 'blackjack'].includes(result.toLowerCase())
+    !Array.isArray(playerHand) ||
+    !Array.isArray(dealerHand) ||
+    playerHand.some(card => typeof card !== 'string') ||
+    dealerHand.some(card => typeof card !== 'string')
   ) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+  }
+
+  const playerScore = calculateScore(playerHand);
+  const dealerScore = calculateScore(dealerHand);
+
+  let validatedResult: 'win' | 'lose' | 'draw' | 'blackjack';
+
+  if (playerScore === 21 && playerHand.length === 2) {
+    validatedResult = 'blackjack';
+  } else if (playerScore > 21) {
+    validatedResult = 'lose';
+  } else if (dealerScore > 21 || playerScore > dealerScore) {
+    validatedResult = 'win';
+  } else if (playerScore < dealerScore) {
+    validatedResult = 'lose';
+  } else {
+    validatedResult = 'draw';
   }
 
   const [user] = await sql`
@@ -30,8 +50,7 @@ export async function POST(req: Request) {
   }
 
   let payout = 0;
-
-  switch (result.toLowerCase()) {
+  switch (validatedResult) {
     case 'win':
     case 'blackjack':
       payout = bet * 2;
@@ -60,5 +79,6 @@ export async function POST(req: Request) {
     success: true,
     payout,
     casinoBalance: updated.balance,
+    validatedResult,
   });
 }

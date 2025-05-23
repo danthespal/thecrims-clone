@@ -1,18 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
-
-const CARD_VALUES = {
-  2: 2, 3: 3, 4: 4, 5: 5, 6: 6,
-  7: 7, 8: 8, 9: 9, 10: 10,
-  J: 10, Q: 10, K: 10, A: 11,
-};
-
-const drawCard = (): string => {
-  const faces = Object.keys(CARD_VALUES);
-  const random = Math.floor(Math.random() * faces.length);
-  return faces[random];
-};
+import { drawCard } from '@/lib/blackjackUtils'; // ✅ clean import
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -42,7 +31,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Insufficient casino balance' }, { status: 400 });
   }
 
-  // Deduct the bet
   await sql`
     UPDATE "CasinoWallet"
     SET balance = balance - ${bet}
