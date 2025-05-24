@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const rateLimitMap = new Map<string, { count: number; timestamp: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const MAX_REQUESTS = 10;
+const MAX_REQUESTS = 100;
 
 export function checkRateLimit(req: NextRequest): NextResponse | null {
   const forwarded = req.headers.get('x-forwarded-for');
