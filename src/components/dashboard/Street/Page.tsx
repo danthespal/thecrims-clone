@@ -23,7 +23,7 @@ const StreetPage = () => {
   const [selectedType, setSelectedType] = useState<string>('weapon');
   const [feedback, setFeedback] = useState<string | null>(null);
   const { refreshState } = useEquipmentContext();
-  const { session } = useSession();
+  const { session, refresh } = useSession(); // ✅ include refresh
   const money = session?.user?.money ?? 0;
 
   useEffect(() => {
@@ -55,6 +55,7 @@ const StreetPage = () => {
       if (res.ok) {
         setFeedback(result.message || 'Item purchased!');
         await refreshState();
+        await refresh();
       } else {
         setFeedback(result.error || 'Purchase failed.');
       }

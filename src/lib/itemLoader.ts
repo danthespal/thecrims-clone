@@ -1,17 +1,22 @@
-import items from '@/data/items.json';
+import sql from '@/lib/db';
 
 export type Item = {
-  id: number;
-  name: string;
+  id: number,
+  name: string,
   description: string;
   type: string;
   price: number;
 };
 
-export function getAllItems(): Item[] {
-  return items;
+export async function getAllItems(): Promise<Item[]> {
+  return await sql<Item[]>`
+    SELECT id, name, description, type, price FROM "Items"
+  `;
 }
 
-export function getItemById(id: number): Item | undefined {
-  return items.find(item => item.id === id);
+export async function getItemById(id: number): Promise<Item | undefined> {
+  const [item] = await sql<Item[]>`
+    SELECT id, name, description, type, price FROM "Items" WHERE id = ${id}
+  `;
+  return item;
 }

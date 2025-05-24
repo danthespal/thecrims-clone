@@ -28,11 +28,15 @@ export async function GET() {
     WHERE user_id = ${user.id}
   `;
 
-  const inventory: Item[] = rawInventory.map(({ item_id, quantity }) => {
-    const base = getItemById(item_id);
-    if (!base) return null;
-    return { ...base, quantity };
-  }).filter(Boolean) as Item[];
+  const inventory: Item[] = [];
+  for (const { item_id, quantity } of rawInventory) {
+    const base = await getItemById(item_id);
+    if (!base) {
+      console.warn(`❌ Unknown item_id in inventory: ${item_id}`);
+      continue;
+    }
+    inventory.push({ ...base, quantity });
+  }
 
   const rawEquipment = await sql`
     SELECT slot, item_id FROM "UserEquipment"
@@ -41,8 +45,12 @@ export async function GET() {
 
   const equipment: Record<string, Item> = {};
   for (const row of rawEquipment) {
-    const base = getItemById(row.item_id);
-    if (base) equipment[row.slot] = base;
+    const base = await getItemById(row.item_id);
+    if (base) {
+      equipment[row.slot] = base;
+    } else {
+      console.warn(`❌ Unknown item_id in equipment: ${row.item_id}`);
+    }
   }
 
   return NextResponse.json({ equipment, inventory });

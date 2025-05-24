@@ -23,7 +23,7 @@ export async function POST(req: Request) {
   }
 
   const { item_id } = await req.json();
-  const item = getItemById(item_id);
+  const item = await getItemById(item_id);
 
   if (!item) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ message: `${item.name} purchased for $${item.price}` });
   } catch (error) {
-    console.error('Error adding to inventory:', error);
+    console.error('❌ Error adding to inventory:', error);
     return NextResponse.json({ error: 'Failed to complete purchase.' }, { status: 500 });
   }
 }
