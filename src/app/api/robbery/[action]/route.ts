@@ -5,12 +5,16 @@ import { checkLevelUp } from '@/lib/levelUp';
 import { robberyActions, RobberyAction } from '@/lib/robberyConfig';
 import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: NextRequest, context: { params: { action: string } }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { action: string } }
+) {
+  const awaitedParams = await params;
+  const action = awaitedParams.action as RobberyAction;
+  const config = robberyActions[action];
+
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
-
-  const action = context.params.action as RobberyAction;
-  const config = robberyActions[action];
 
   if (!config) {
     return NextResponse.json({ error: 'Invalid robbery action' }, { status: 400 });
