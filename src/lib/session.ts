@@ -5,12 +5,21 @@ import sql from '@/lib/db';
 const SESSION_COOKIE_NAME = 'session-token';
 
 export async function createSession(userId: number): Promise<NextResponse> {
-  const sessionId = randomUUID();
-
-  await sql`
-    INSERT INTO "Sessions" (id, user_id)
-    VALUES (${sessionId}, ${userId})
+  const existing = await sql`
+    SELECT id FROM "Sessions"
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT 1
   `;
+
+  const sessionId = existing.length ? existing[0].id : randomUUID();
+
+  if (!existing.length) {
+    await sql`
+      INSERT INTO "Sessions" (id, user_id)
+      VALUES (${sessionId}, ${userId})
+    `;
+  }
 
   const response = NextResponse.json({ success: true });
 

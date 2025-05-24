@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
 import { LoginSchema } from '@/lib/schemas/loginSchema';
 
 export default function LoginForm() {
-  const router = useRouter();
   const [form, setForm] = useState({ account_name: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -55,7 +53,17 @@ export default function LoginForm() {
       }
 
       toast.success('Logged in!');
-      router.push('/dashboard');
+
+      // wait for session cookie propagation
+      await new Promise((resolve) => setTimeout(resolve, 100));
+          
+      // verify session exists before redirect
+      const verify = await fetch('/api/user/session');
+      if (verify.ok) {
+        window.location.href = '/dashboard';
+      } else {
+        toast.error('Session not ready. Please try again.');
+      }
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'An unknown error occurred';

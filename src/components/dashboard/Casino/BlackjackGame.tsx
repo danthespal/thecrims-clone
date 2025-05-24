@@ -67,6 +67,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
         setRevealedDealerCards(data.dealer);
         setPhase('done');
         await resolveResult(data.player, data.dealer, nextRound - 1);
+        onResult?.();
       } else {
         setPhase('player');
       }

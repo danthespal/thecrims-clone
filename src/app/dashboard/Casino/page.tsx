@@ -9,7 +9,7 @@ const TABS = ['Casino Wallet', 'Blackjack'];
 
 export default function Casino() {
   const [activeTab, setActiveTab] = useState('Casino Wallet');
-  const { session } = useSession();
+  const { session, refresh } = useSession();
   const casinoBalance = session?.user?.casino_balance ?? null;
 
   return (
@@ -36,8 +36,8 @@ export default function Casino() {
       </div>
 
       <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 space-y-8">
-        {activeTab === 'Casino Wallet' && <CasinoControls onSuccess={() => {}} />}
-        {activeTab === 'Blackjack' && <BlackjackGame onResult={() => {}} />}
+        {activeTab === 'Casino Wallet' && <CasinoControls onSuccess={refresh} />}
+        {activeTab === 'Blackjack' && <BlackjackGame onResult={refresh} />}
       </div>
     </div>
   );
