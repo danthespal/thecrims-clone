@@ -1,8 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   const cookieStore = await cookies();
   const session = cookieStore.get('session-token');
 
@@ -27,12 +31,8 @@ export async function POST(req: Request) {
   }
 
   await sql.begin(async (tx) => {
-    await tx`
-      UPDATE "CasinoWallet" SET balance = balance - ${value} WHERE user_id = ${wallet.user_id}
-    `;
-    await tx`
-      UPDATE "User" SET money = money + ${value} WHERE id = ${wallet.user_id}
-    `;
+    await tx`UPDATE "CasinoWallet" SET balance = balance - ${value} WHERE user_id = ${wallet.user_id}`;
+    await tx`UPDATE "User" SET money = money + ${value} WHERE id = ${wallet.user_id}`;
     await tx`
       INSERT INTO "CasinoTransactions" (user_id, type, amount)
       VALUES (${wallet.user_id}, 'withdraw', ${value})

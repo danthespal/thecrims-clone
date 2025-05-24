@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
 import { getItemById, Item as StaticItem } from '@/lib/itemLoader';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
 type Item = StaticItem & { quantity?: number };
 
@@ -56,7 +57,10 @@ export async function GET() {
   return NextResponse.json({ equipment, inventory });
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   const cookieStore = await cookies();
   const session = cookieStore.get('session-token');
 
@@ -86,24 +90,24 @@ export async function POST(req: Request) {
   console.log('🎒 Inventory:', body.inventory);
 
   try {
-    await sql.begin(async (sql) => {
-      await sql`DELETE FROM "UserEquipment" WHERE user_id = ${user.id}`;
+    await sql.begin(async (tx) => {
+      await tx`DELETE FROM "UserEquipment" WHERE user_id = ${user.id}`;
       for (const [slot, item] of Object.entries(body.equipment)) {
         if (item?.id) {
           console.log(`➕ Equipping ${item.id} in slot ${slot}`);
-          await sql`
+          await tx`
             INSERT INTO "UserEquipment" (user_id, slot, item_id)
             VALUES (${user.id}, ${slot}, ${item.id})
           `;
         }
       }
 
-      await sql`DELETE FROM "UserInventory" WHERE user_id = ${user.id}`;
+      await tx`DELETE FROM "UserInventory" WHERE user_id = ${user.id}`;
       for (const item of body.inventory) {
         if (item?.id) {
           const qty = item.quantity ?? 1;
           console.log(`➕ Adding ${qty}x item ${item.id} to inventory`);
-          await sql`
+          await tx`
             INSERT INTO "UserInventory" (user_id, item_id, quantity)
             VALUES (${user.id}, ${item.id}, ${qty})
           `;

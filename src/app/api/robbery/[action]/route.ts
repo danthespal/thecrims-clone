@@ -1,10 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { cookies } from 'next/headers';
 import { checkLevelUp } from '@/lib/levelUp';
 import { robberyActions, RobberyAction } from '@/lib/robberyConfig';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: Request, context: { params: { action: string } }) {
+export async function POST(req: NextRequest, context: { params: { action: string } }) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   const action = context.params.action as RobberyAction;
   const config = robberyActions[action];
 

@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import bcrypt from 'bcrypt';
 import { createSession } from '@/lib/session';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   try {
     const { account_name, password } = await req.json();
 

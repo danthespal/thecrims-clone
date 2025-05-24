@@ -22,13 +22,11 @@ export async function DELETE() {
   await sql`
     DELETE FROM "User" WHERE id = ${user.id};
   `;
-
   await sql`
     DELETE FROM "Sessions" WHERE id = ${session.value};
   `;
 
   const res = NextResponse.json({ success: true });
   res.cookies.set('session-token', '', { path: '/', maxAge: 0 });
-
   return res;
 }

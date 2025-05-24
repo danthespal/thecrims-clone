@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
 import { getItemById } from '@/lib/itemLoader';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   const cookieStore = await cookies();
   const session = cookieStore.get('session-token');
 
@@ -23,8 +27,11 @@ export async function POST(req: Request) {
   }
 
   const { item_id } = await req.json();
-  const item = await getItemById(item_id);
+  if (!item_id || typeof item_id !== 'number') {
+    return NextResponse.json({ error: 'Invalid item ID' }, { status: 400 });
+  }
 
+  const item = await getItemById(item_id);
   if (!item) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
   }
@@ -34,15 +41,15 @@ export async function POST(req: Request) {
   }
 
   try {
-    await sql.begin(async (sql) => {
-      await sql`
+    await sql.begin(async (tx) => {
+      await tx`
         INSERT INTO "UserInventory" (user_id, item_id, quantity)
         VALUES (${user.id}, ${item.id}, 1)
         ON CONFLICT (user_id, item_id)
         DO UPDATE SET quantity = "UserInventory".quantity + 1
       `;
 
-      await sql`
+      await tx`
         UPDATE "User" SET money = money - ${item.price}
         WHERE id = ${user.id}
       `;

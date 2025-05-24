@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
 import sql from '@/lib/db';
@@ -9,7 +9,7 @@ const ProfileSchema = z.object({
   date_of_birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
   const session = cookieStore.get('session-token');
   if (!session?.value) {

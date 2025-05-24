@@ -1,10 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const accountName = searchParams.get('account_name');
+    const accountName = req.nextUrl.searchParams.get('account_name');
 
     if (!accountName) {
       return NextResponse.json({ available: false });

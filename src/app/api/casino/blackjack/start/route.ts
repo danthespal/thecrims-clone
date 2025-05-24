@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
 import { drawCard, calculateScore } from '@/lib/blackjackUtils';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   const cookieStore = await cookies();
   const session = cookieStore.get('session-token');
 

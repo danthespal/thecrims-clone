@@ -17,6 +17,9 @@ export async function POST() {
       response.cookies.set(SESSION_COOKIE_NAME, '', {
         path: '/',
         maxAge: 0,
+        httpOnly: true,
+        sameSite: 'strict',
+        secure: true,
       });
     }
 

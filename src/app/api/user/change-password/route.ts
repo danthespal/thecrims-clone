@@ -1,17 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcrypt';
 import sql from '@/lib/db';
+import { checkRateLimit } from '@/lib/rateLimiter';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const limitRes = checkRateLimit(req);
+  if (limitRes) return limitRes;
+
   const cookieStore = await cookies();
   const session = cookieStore.get('session-token');
   if (!session?.value) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { current_password, new_password, confirm_password } = body;
+  const { current_password, new_password, confirm_password } = await req.json();
 
   if (!current_password || !new_password || !confirm_password) {
     return NextResponse.json({ error: 'All fields are required' }, { status: 400 });

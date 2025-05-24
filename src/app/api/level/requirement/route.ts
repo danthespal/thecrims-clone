@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import levelRequirements from '@/data/level-requirements.json';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const level = parseInt(searchParams.get('level') || '0', 10);
+    const levelParam = req.nextUrl.searchParams.get('level');
+    const level = parseInt(levelParam || '0', 10);
 
     if (isNaN(level) || level < 1 || level > levelRequirements.length) {
       return NextResponse.json({ error: 'Invalid level' }, { status: 400 });

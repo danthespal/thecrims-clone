@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import sql from '@/lib/db';
 import { cookies } from 'next/headers';
+import sql from '@/lib/db';
 import { regenWill } from '@/lib/regenWill';
 
 export async function GET() {

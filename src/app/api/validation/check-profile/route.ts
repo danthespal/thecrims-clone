@@ -1,11 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
-    const profileName = searchParams.get('profile_name');
-    const dob = searchParams.get('date_of_birth');
+    const profileName = req.nextUrl.searchParams.get('profile_name');
+    const dob = req.nextUrl.searchParams.get('date_of_birth');
 
     if (!profileName || !dob) {
       return NextResponse.json({ available: false });
@@ -16,7 +15,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ available: false });
     }
 
-    // Generate suffix
     const suffix = `#${String(d.getFullYear() % 100)}${d.getMonth() + 1}${d.getDate()}`;
     const fullName = `${profileName}${suffix}`;
 
