@@ -51,59 +51,61 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
   const { session } = useSession();
 
   const refreshState = async () => {
-    try {
-      const res = await fetch('/api/gear');
-      const data = await res.json();
+  try {
+    const res = await fetch('/api/gear?action=load', {
+      method: 'GET',
+    });
+    const data = await res.json();
 
-      console.log('📥 Gear loaded:', data);
+    console.log('📥 Gear loaded:', data);
 
-      if (!Array.isArray(data.inventory)) {
-        console.warn('⚠️ Inventory is not an array:', data.inventory);
-      }
-
-      setEquipment(data.equipment || {});
-      setInventory(data.inventory || []);
-    } catch (err) {
-      console.error('❌ Failed to load gear/inventory:', err);
+    if (!Array.isArray(data.inventory)) {
+      console.warn('⚠️ Inventory is not an array:', data.inventory);
     }
-  };
+
+    setEquipment(data.equipment || {});
+    setInventory(data.inventory || []);
+  } catch (err) {
+    console.error('❌ Failed to load gear/inventory:', err);
+  }
+};
 
   const saveState = async () => {
     sendSave(equipment, inventory);
   };
 
   const sendSave = (
-    equipment: EquipmentSlots,
-    inventory: ItemWithQuantity[]
-  ) => {
-    const cleanedEquipment = Object.entries(equipment).reduce((acc, [slot, item]) => {
-      if (item?.id != null) acc[slot] = { id: item.id };
-      return acc;
-    }, {} as Record<string, { id: number }>);
+  equipment: EquipmentSlots,
+  inventory: ItemWithQuantity[]
+) => {
+  const cleanedEquipment = Object.entries(equipment).reduce((acc, [slot, item]) => {
+    if (item?.id != null) acc[slot] = { id: item.id };
+    return acc;
+  }, {} as Record<string, { id: number }>);
 
-    const cleanedInventory = inventory.map(({ id, quantity }) => ({
-      id,
-      quantity: quantity ?? 1,
-    }));
+  const cleanedInventory = inventory.map(({ id, quantity }) => ({
+    id,
+    quantity: quantity ?? 1,
+  }));
 
-    console.log('📦 Saving NOW:', { cleanedEquipment, cleanedInventory });
+  console.log('📦 Saving NOW:', { cleanedEquipment, cleanedInventory });
 
-    fetch('/api/gear', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        equipment: cleanedEquipment,
-        inventory: cleanedInventory,
-      }),
-    }).then(async (res) => {
-      if (!res.ok) {
-        const error = await res.json();
-        console.error('❌ Failed to save:', error);
-      } else {
-        console.log('✅ Save complete');
-      }
-    });
-  };
+  fetch('/api/gear?action=save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      equipment: cleanedEquipment,
+      inventory: cleanedInventory,
+    }),
+  }).then(async (res) => {
+    if (!res.ok) {
+      const error = await res.json();
+      console.error('❌ Failed to save:', error);
+    } else {
+      console.log('✅ Save complete');
+    }
+  });
+};
 
   const equipItem = (slot: keyof EquipmentSlots, item: BaseItem) => {
     if (slotRules[slot] !== item.type) return;

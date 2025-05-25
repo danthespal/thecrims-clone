@@ -29,9 +29,9 @@ const StreetPage = () => {
   useEffect(() => {
     const fetchItems = async () => {
       try {
-        const res = await fetch('/api/items');
-        const data = await res.json();
-        setItems(data);
+        const res = await fetch('/api/items?action=all');
+        const { items } = await res.json();
+        setItems(items);
       } catch (error) {
         console.error('Failed to load items:', error);
       }

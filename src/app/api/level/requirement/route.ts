@@ -3,7 +3,8 @@ import levelRequirements from '@/data/level-requirements.json';
 
 export async function GET(req: NextRequest) {
   try {
-    const levelParam = req.nextUrl.searchParams.get('level');
+    const { searchParams } = new URL(req.url);
+    const levelParam = searchParams.get('level');
     const level = parseInt(levelParam || '0', 10);
 
     if (isNaN(level) || level < 1 || level > levelRequirements.length) {

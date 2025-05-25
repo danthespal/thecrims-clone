@@ -30,7 +30,7 @@ export default function CasinoControls({ onSuccess }: Props) {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/casino/history');
+      const res = await fetch('/api/casino?action=history');
       const data = await res.json();
       setTransactions(data.transactions);
       setTotals(data.totals);
