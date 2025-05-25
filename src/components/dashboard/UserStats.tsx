@@ -94,7 +94,7 @@ export default function UserStats() {
 
       <button
         onClick={async () => {
-          await fetch('/api/auth/logout', { method: 'POST' });
+          await fetch('/api/auth?action=logout', { method: 'POST' });
           router.push('/');
         }}
         className="mt-4 w-full bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-4 text-sm rounded"

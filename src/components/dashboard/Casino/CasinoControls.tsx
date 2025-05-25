@@ -44,7 +44,7 @@ export default function CasinoControls({ onSuccess }: Props) {
     setLoading(true);
     setMessage('');
     try {
-      const res = await fetch('/api/casino/deposit', {
+      const res = await fetch('/api/casino?action=deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: deposit }),
@@ -71,7 +71,7 @@ export default function CasinoControls({ onSuccess }: Props) {
     setLoading(true);
     setMessage('');
     try {
-      const res = await fetch('/api/casino/withdraw', {
+      const res = await fetch('/api/casino?action=withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: withdraw }),

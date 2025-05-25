@@ -24,11 +24,7 @@ const PasswordSchema = z.object({
 });
 
 export default function ProfileSettings() {
-  const [form, setForm] = useState({
-    email: '',
-    profile_name: '',
-    date_of_birth: '',
-  });
+  const [form, setForm] = useState({ email: '', profile_name: '', date_of_birth: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -45,14 +41,18 @@ export default function ProfileSettings() {
 
   useEffect(() => {
     const loadProfile = async () => {
-      const res = await fetch('/api/user/profile');
+      const res = await fetch('/api/user?action=profile', {
+        method: 'POST',
+      });
       if (res.ok) {
         const data = await res.json();
         setForm({
-          email: data.email || '',
-          profile_name: data.profile_name || '',
-          date_of_birth: data.date_of_birth || '',
+          email: data.user.email || '',
+          profile_name: data.user.profile_name || '',
+          date_of_birth: data.user.date_of_birth?.split('T')[0] || '',
         });
+      } else {
+        toast.error('Failed to load profile');
       }
     };
     loadProfile();
@@ -65,7 +65,11 @@ export default function ProfileSettings() {
     }
     setDeleting(true);
     try {
-      const res = await fetch('/api/user/delete-account', { method: 'DELETE' });
+      const res = await fetch('/api/user?action=delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmation: 'DELETE' }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Account deletion failed');
       toast.success('Account deleted.');
@@ -78,13 +82,11 @@ export default function ProfileSettings() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPasswordForm((prev) => ({ ...prev, [name]: value }));
+    setPasswordForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,7 +108,7 @@ export default function ProfileSettings() {
     }
 
     try {
-      const res = await fetch('/api/user/update-profile', {
+      const res = await fetch('/api/user?action=profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(result.data),
@@ -114,7 +116,6 @@ export default function ProfileSettings() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Update failed');
-
       toast.success('Profile updated successfully!');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'An unexpected error occurred.');
@@ -142,10 +143,10 @@ export default function ProfileSettings() {
     }
 
     try {
-      const res = await fetch('/api/user/change-password', {
+      const res = await fetch('/api/user?action=change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(result.data),
+        body: JSON.stringify({ newPassword: result.data.new_password }),
       });
 
       const data = await res.json();

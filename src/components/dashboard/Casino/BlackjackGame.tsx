@@ -44,7 +44,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
     setNetGain(null);
     setResultText('');
     try {
-      const res = await fetch('/api/casino/blackjack/start', {
+      const res = await fetch('/api/casino/blackjack?action=start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bet }),
@@ -80,7 +80,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
 
   const hit = async () => {
     try {
-      const res = await fetch('/api/casino/blackjack/hit', {
+      const res = await fetch('/api/casino/blackjack?action=hit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hand: playerHand }),
@@ -105,7 +105,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
   const stand = async () => {
     setPhase('dealer');
     try {
-      const res = await fetch('/api/casino/blackjack/stand', {
+      const res = await fetch('/api/casino/blackjack?action=stand', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dealerHand }),
@@ -125,7 +125,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
 
   const resolveResult = async (playerCards: string[], dealerCards: string[], roundNumber: number) => {
     try {
-      const res = await fetch('/api/casino/blackjack/resolve', {
+      const res = await fetch('/api/casino/blackjack?action=resolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bet, playerHand: playerCards, dealerHand: dealerCards }),

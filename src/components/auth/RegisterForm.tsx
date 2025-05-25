@@ -53,35 +53,37 @@ export default function RegisterForm() {
   };
 
   const checkAvailability = (field: string, value: string) => {
-    const routeMap: Record<string, string> = {
-      account_name: 'check-account',
-      email: 'check-email',
-      profile_name: 'check-profile',
-    };
-    const route = routeMap[field];
-    if (!route || !value) return;
-
-    clearTimeout(debounceTimers.current[field]);
-
-    debounceTimers.current[field] = setTimeout(async () => {
-      try {
-        let url = `/api/validation/${route}?${field}=${encodeURIComponent(value)}`;
-
-        if (field === 'profile_name') {
-          const { date_of_birth } = form;
-          if (!date_of_birth) return;
-          const query = new URLSearchParams({ profile_name: value, date_of_birth });
-          url = `/api/validation/check-profile?${query.toString()}`;
-        }
-
-        const res = await fetch(url);
-        const data = await res.json();
-        setAvailability((prev) => ({ ...prev, [field]: data.available }));
-      } catch (err) {
-        console.error(`Availability check failed for ${field}`, err);
-      }
-    }, 500);
+  const actionMap: Record<string, string> = {
+    account_name: 'check-account',
+    email: 'check-email',
+    profile_name: 'check-profile',
   };
+  const action = actionMap[field];
+  if (!action || !value) return;
+
+  clearTimeout(debounceTimers.current[field]);
+
+  debounceTimers.current[field] = setTimeout(async () => {
+    try {
+      const payload: Record<string, string> = { [field]: value };
+      if (field === 'profile_name') {
+        if (!form.date_of_birth) return;
+        payload.date_of_birth = form.date_of_birth;
+      }
+
+      const res = await fetch(`/api/validation?action=${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      setAvailability((prev) => ({ ...prev, [field]: data.available }));
+    } catch (err) {
+      console.error(`Availability check failed for ${field}`, err);
+    }
+  }, 500);
+};
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -133,7 +135,7 @@ export default function RegisterForm() {
     }
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch('/api/auth?action=register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(result.data),

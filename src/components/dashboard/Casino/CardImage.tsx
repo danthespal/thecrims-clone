@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 interface CardImageProps {
   card: string;
   faceDown?: boolean;
-  delay?: number; // NEW
+  delay?: number;
   className?: string;
 }
 
