@@ -34,22 +34,26 @@ export default function RobberyButton({ action, label }: RobberyButtonProps) {
     setLoading(true);
     setMessage('');
 
-    const res = await fetch(`/api/robbery/${action}`, {
+    const res = await fetch(`/api/robbery?action=${action}`, {
       method: 'POST',
     });
 
     const data = await res.json();
     setLoading(false);
 
-    if (res.ok) {
-        setMessage(`✅ You gained $${data.rewards.money} and ${data.rewards.respect} respect.`);
-        setCooldown(data.cooldown);
-
-        // Trigger stats refresh
-        window.dispatchEvent(new Event('user:update'));
+    if (res.ok && data.result) {
+      const { earnedMoney, earnedRespect } = data.result;
+      setMessage(`✅ You gained $${earnedMoney} and ${earnedRespect} respect.`);
+      setCooldown(data.cooldown ?? 0);
+      window.dispatchEvent(new Event('user:update'));
     } else {
-      setMessage(`❌ ${data.error || 'Failed to rob.'}`);
-      if (res.status === 429 && data.error.includes('Wait')) {
+      if (data.error?.toLowerCase().includes('will')) {
+        setMessage('❌ You don’t have enough willpower.');
+      } else {
+        setMessage(`❌ ${data.error ?? 'Robbery failed.'}`);
+      }
+
+      if (res.status === 429 && data.error?.includes('Wait')) {
         const match = data.error.match(/Wait (\d+)s/);
         if (match) setCooldown(parseInt(match[1], 10));
       }

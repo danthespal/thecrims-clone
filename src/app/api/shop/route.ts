@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import sql from '@/lib/db';
+import { getUserFromSession } from '@/lib/sessionUser';
 import { getItemById } from '@/lib/itemLoader';
 import { checkRateLimit } from '@/lib/rateLimiter';
 
@@ -8,22 +8,9 @@ export async function POST(req: NextRequest) {
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
 
-  const cookieStore = await cookies();
-  const session = cookieStore.get('session-token');
-
-  if (!session?.value) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  const [user] = await sql`
-    SELECT u.id, u.money
-    FROM "Sessions" s
-    JOIN "User" u ON u.id = s.user_id
-    WHERE s.id = ${session.value}
-  `;
-
+  const user = await getUserFromSession();
   if (!user) {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const { item_id } = await req.json();
@@ -36,7 +23,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
   }
 
-  if (user.money < item.price) {
+  const [fetched] = await sql`
+    SELECT money FROM "User" WHERE id = ${user.id}
+  `;
+
+  if (!fetched || fetched.money < item.price) {
     return NextResponse.json({ error: 'Insufficient funds' }, { status: 400 });
   }
 
@@ -55,7 +46,11 @@ export async function POST(req: NextRequest) {
       `;
     });
 
-    return NextResponse.json({ message: `${item.name} purchased for $${item.price}` });
+    return NextResponse.json({
+      success: true,
+      message: `${item.name} purchased for $${item.price}`,
+      spent: item.price,
+    });
   } catch (error) {
     console.error('❌ Error adding to inventory:', error);
     return NextResponse.json({ error: 'Failed to complete purchase.' }, { status: 500 });

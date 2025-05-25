@@ -12,17 +12,14 @@ export async function GET() {
       return NextResponse.json({ authenticated: false });
     }
 
-    const [user] = await sql`
-      SELECT u.id, u.account_name, u.email, u.profile_name, u.profile_suffix,
-             u.level, u.money, u.respect, u.will, u.last_regen,
-             COALESCE(cw.balance, 0) AS casino_balance
+    const [sessionUser] = await sql`
+      SELECT u.id
       FROM "Sessions" s
       JOIN "User" u ON u.id = s.user_id
-      LEFT JOIN "CasinoWallet" cw ON cw.user_id = u.id
       WHERE s.id = ${session.value}
     `;
 
-    if (!user) {
+    if (!sessionUser) {
       return NextResponse.json({ authenticated: false });
     }
 
@@ -32,21 +29,30 @@ export async function GET() {
     const maxWill = parseInt(settings.max_will || '100', 10);
     const regenRate = parseInt(settings.will_regen_per_minute || '1', 10);
 
-    const updated = await regenWill(
-      user.id,
-      user.will,
-      user.last_regen,
+    const [preRegen] = await sql`
+      SELECT will, last_regen FROM "User" WHERE id = ${sessionUser.id}
+    `;
+
+    await regenWill(
+      sessionUser.id,
+      preRegen.will,
+      preRegen.last_regen,
       maxWill,
       regenRate
     );
 
+    const [user] = await sql`
+      SELECT u.id, u.account_name, u.email, u.profile_name, u.profile_suffix,
+             u.level, u.money, u.respect, u.will, u.last_regen,
+             COALESCE(cw.balance, 0) AS casino_balance
+      FROM "User" u
+      LEFT JOIN "CasinoWallet" cw ON cw.user_id = u.id
+      WHERE u.id = ${sessionUser.id}
+    `;
+
     return NextResponse.json({
       authenticated: true,
-      user: {
-        ...user,
-        will: updated.will,
-        last_regen: updated.last_regen,
-      },
+      user,
       settings: {
         max_will: maxWill,
         regen_rate_per_minute: regenRate,

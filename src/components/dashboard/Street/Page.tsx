@@ -44,14 +44,14 @@ const StreetPage = () => {
 
   const handleBuy = async (itemId: number) => {
     try {
-      const res = await fetch('/api/shop/buy', {
+      const res = await fetch('/api/shop?action=buy', {
         method: 'POST',
         body: JSON.stringify({ item_id: itemId }),
         headers: { 'Content-Type': 'application/json' },
       });
-
+    
       const result = await res.json();
-
+    
       if (res.ok) {
         setFeedback(result.message || 'Item purchased!');
         await refreshState();
@@ -63,9 +63,10 @@ const StreetPage = () => {
       console.error(err);
       setFeedback('Purchase failed.');
     }
-
+  
     setTimeout(() => setFeedback(null), 3000);
   };
+
 
   return (
     <div className="space-y-6">
