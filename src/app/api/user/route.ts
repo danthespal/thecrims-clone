@@ -25,36 +25,65 @@ export async function POST(req: NextRequest) {
   try {
     switch (action) {
       case 'profile': {
+        const body = await req.json().catch(() => null);
+
         const [user] = await sql`
-          SELECT u.id, u.account_name, u.email, u.profile_name, u.profile_suffix, u.date_of_birth,
-                 u.level, u.respect, u.money, u.will, u.last_regen
-          FROM "User" u
-          WHERE u.id = (
-            SELECT user_id FROM "Sessions" WHERE id = ${sessionId}
-          )
+          SELECT u.id FROM "Sessions" s
+          JOIN "User" u ON u.id = s.user_id
+          WHERE s.id = ${sessionId}
         `;
 
         if (!user) {
           return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        const settings = await sql`
-          SELECT key, value FROM "GameSettings"
-          WHERE key IN ('max_will', 'will_regen_per_minute')
-        `;
+        if (!body || Object.keys(body).length === 0) {
+          // GET profile
+          const [userInfo] = await sql`
+            SELECT u.id, u.account_name, u.email, u.profile_name, u.profile_suffix, u.date_of_birth,
+                   u.level, u.respect, u.money, u.will, u.last_regen
+            FROM "User" u
+            WHERE u.id = ${user.id}
+          `;
 
-        const gameSettings: Record<string, string> = {};
-        for (const row of settings) {
-          gameSettings[row.key] = row.value;
+          const settings = await sql`
+            SELECT key, value FROM "GameSettings"
+            WHERE key IN ('max_will', 'will_regen_per_minute')
+          `;
+
+          const gameSettings: Record<string, string> = {};
+          for (const row of settings) {
+            gameSettings[row.key] = row.value;
+          }
+
+          return NextResponse.json({
+            user: userInfo,
+            settings: {
+              max_will: parseInt(gameSettings['max_will'] || '100'),
+              regen_rate_per_minute: parseInt(gameSettings['will_regen_per_minute'] || '1'),
+            },
+          });
         }
 
-        return NextResponse.json({
-          user,
-          settings: {
-            max_will: parseInt(gameSettings['max_will'] || '100'),
-            regen_rate_per_minute: parseInt(gameSettings['will_regen_per_minute'] || '1'),
-          },
-        });
+        // UPDATE profile
+        const { email, profile_name, date_of_birth } = body;
+
+        if (
+          typeof email !== 'string' ||
+          typeof profile_name !== 'string' ||
+          typeof date_of_birth !== 'string' ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)
+        ) {
+          return NextResponse.json({ error: 'Invalid profile data' }, { status: 400 });
+        }
+
+        await sql`
+          UPDATE "User"
+          SET email = ${email}, profile_name = ${profile_name}, date_of_birth = ${date_of_birth}
+          WHERE id = ${user.id}
+        `;
+
+        return NextResponse.json({ success: true });
       }
 
       case 'change-password': {
