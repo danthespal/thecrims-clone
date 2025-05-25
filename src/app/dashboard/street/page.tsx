@@ -23,7 +23,7 @@ const StreetPage = () => {
   const [selectedType, setSelectedType] = useState<string>('weapon');
   const [feedback, setFeedback] = useState<string | null>(null);
   const { refreshState } = useEquipmentContext();
-  const { session, refresh } = useSession(); // ✅ include refresh
+  const { session, refresh } = useSession();
   const money = session?.user?.money ?? 0;
 
   useEffect(() => {
