@@ -4,55 +4,74 @@ import { getUserFromSession } from '@/lib/session';
 import { getItemById } from '@/lib/game/itemLoader';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 
+export async function GET(req: NextRequest) {
+  const action = req.nextUrl.searchParams.get('action');
+
+  if (action === 'list') {
+    const items = await sql`
+      SELECT id, name, description, type, price
+      FROM "Items"
+      ORDER BY price ASC
+    `;
+    return NextResponse.json(items);
+  }
+
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+}
+
 export async function POST(req: NextRequest) {
+  const action = req.nextUrl.searchParams.get('action');
+
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
 
   const user = await getUserFromSession();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { item_id } = await req.json();
-  if (!item_id || typeof item_id !== 'number') {
-    return NextResponse.json({ error: 'Invalid item ID' }, { status: 400 });
+  const { item_id, quantity = 1 } = await req.json();
+
+  if (!item_id || typeof item_id !== 'number' || quantity < 1) {
+    return NextResponse.json({ error: 'Invalid item ID or quantity' }, { status: 400 });
   }
 
   const item = await getItemById(item_id);
-  if (!item) {
-    return NextResponse.json({ error: 'Item not found' }, { status: 404 });
-  }
+  if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
 
-  const [fetched] = await sql`
+  const [userRow] = await sql`
     SELECT money FROM "User" WHERE id = ${user.id}
   `;
+  const currentMoney = userRow?.money ?? 0;
 
-  if (!fetched || fetched.money < item.price) {
-    return NextResponse.json({ error: 'Insufficient funds' }, { status: 400 });
+  if (action === 'buy') {
+    const totalCost = item.price * quantity;
+    if (currentMoney < totalCost) {
+      return NextResponse.json({ error: 'Insufficient funds' }, { status: 400 });
+    }
+
+    try {
+      await sql.begin(async (tx) => {
+        await tx`
+          INSERT INTO "UserInventory" (user_id, item_id, quantity)
+          VALUES (${user.id}, ${item.id}, ${quantity})
+          ON CONFLICT (user_id, item_id)
+          DO UPDATE SET quantity = "UserInventory".quantity + ${quantity}
+        `;
+        await tx`
+          UPDATE "User" SET money = money - ${totalCost}
+          WHERE id = ${user.id}
+        `;
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `${item.name} purchased for $${totalCost}`,
+        spent: totalCost,
+      });
+    } catch (error) {
+      console.error('Buy error:', error);
+      return NextResponse.json({ error: 'Failed to complete purchase.' }, { status: 500 });
+    }
   }
 
-  try {
-    await sql.begin(async (tx) => {
-      await tx`
-        INSERT INTO "UserInventory" (user_id, item_id, quantity)
-        VALUES (${user.id}, ${item.id}, 1)
-        ON CONFLICT (user_id, item_id)
-        DO UPDATE SET quantity = "UserInventory".quantity + 1
-      `;
-
-      await tx`
-        UPDATE "User" SET money = money - ${item.price}
-        WHERE id = ${user.id}
-      `;
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: `${item.name} purchased for $${item.price}`,
-      spent: item.price,
-    });
-  } catch (error) {
-    console.error('❌ Error adding to inventory:', error);
-    return NextResponse.json({ error: 'Failed to complete purchase.' }, { status: 500 });
-  }
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 }

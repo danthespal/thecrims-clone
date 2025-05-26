@@ -6,8 +6,7 @@ import StreetNews from '@/components/dashboard/Street/StreetNews';
 import ActionTabs from '@/components/dashboard/Street/ActionTabs';
 import { useEquipmentContext } from '@/context/EquipmentContext';
 import useSession from '@/hooks/useSession';
-import useItems from '@/hooks/useItems';
-import { buyItem } from '@/lib/services/shop';
+import useShop from '@/hooks/useShop';
 
 interface Item {
   id: number;
@@ -25,7 +24,7 @@ const StreetPage = () => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const { refreshState } = useEquipmentContext();
   const { session, refresh } = useSession();
-  const { items, loading } = useItems();
+  const { items, loading, buyItem } = useShop();
   const money = session?.user?.money ?? 0;
 
   const handleBuy = async (itemId: number) => {
