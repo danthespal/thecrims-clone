@@ -1,5 +1,5 @@
-import sql from '@/lib/db';
-import { checkLevelUp } from '@/lib/levelUp';
+import sql from '@/lib/core/db';
+import { checkLevelUp } from '@/lib/game/levelUp';
 
 export interface RobberyHandlerResult {
   earnedMoney: number;

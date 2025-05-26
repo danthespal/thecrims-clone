@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
-import sql from '@/lib/db';
+import sql from '@/lib/core/db';
 import { createSession, destroySession } from '@/lib/session';
-import { checkRateLimit } from '@/lib/rateLimiter';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
 
 const SESSION_COOKIE_NAME = 'session-token';
 

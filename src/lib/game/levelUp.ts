@@ -1,4 +1,4 @@
-import sql from '@/lib/db';
+import sql from '@/lib/core/db';
 import levelRequirements from '@/data/level-requirements.json';
 
 export async function checkLevelUp(userId: number, currentLevel: number, currentRespect: number) {

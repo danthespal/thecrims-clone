@@ -7,7 +7,7 @@ import {
   useState,
   ReactNode,
 } from 'react';
-import type { Item as BaseItem } from '@/lib/itemLoader';
+import type { Item as BaseItem } from '@/lib/game/itemLoader';
 import useSession from '@/hooks/useSession';
 
 export type ItemWithQuantity = BaseItem & {

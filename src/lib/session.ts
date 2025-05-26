@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import sql from '@/lib/db';
+import sql from '@/lib/core/db';
 
 const SESSION_COOKIE_NAME = 'session-token';
 

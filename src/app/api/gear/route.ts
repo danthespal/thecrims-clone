@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import sql from '@/lib/db';
-import { checkRateLimit } from '@/lib/rateLimiter';
-import { getItemById, Item as StaticItem } from '@/lib/itemLoader';
+import sql from '@/lib/core/db';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
+import { getItemById, Item as StaticItem } from '@/lib/game/itemLoader';
 
 type Item = StaticItem & { quantity?: number };
 

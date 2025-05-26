@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql from '@/lib/db';
+import sql from '@/lib/core/db';
 import { cookies } from 'next/headers';
-import { checkRateLimit } from '@/lib/rateLimiter';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

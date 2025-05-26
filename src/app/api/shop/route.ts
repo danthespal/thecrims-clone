@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql from '@/lib/db';
+import sql from '@/lib/core/db';
 import { getUserFromSession } from '@/lib/session';
-import { getItemById } from '@/lib/itemLoader';
-import { checkRateLimit } from '@/lib/rateLimiter';
+import { getItemById } from '@/lib/game/itemLoader';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
 
 export async function POST(req: NextRequest) {
   const limitRes = checkRateLimit(req);

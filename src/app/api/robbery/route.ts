@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { robberyActions, RobberyAction } from '@/lib/robberyConfig';
-import { checkRateLimit } from '@/lib/rateLimiter';
+import { robberyActions, RobberyAction } from '@/lib/game/robberyConfig';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { getUserFromSession } from '@/lib/session';
 
 export async function POST(req: NextRequest) {

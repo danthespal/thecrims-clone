@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllItems } from '@/lib/itemLoader';
+import { getAllItems } from '@/lib/game/itemLoader';
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);

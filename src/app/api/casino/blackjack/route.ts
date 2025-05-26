@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import sql from '@/lib/db';
-import { drawCard, calculateScore } from '@/lib/blackjackUtils';
-import { checkRateLimit } from '@/lib/rateLimiter';
+import sql from '@/lib/core/db';
+import { drawCard, calculateScore } from '@/lib/game/blackjackUtils';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
 
 // Helper: get userId from session cookie
 async function getSessionUserId(): Promise<number | null> {

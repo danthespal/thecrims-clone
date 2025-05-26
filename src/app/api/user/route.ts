@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import sql from '@/lib/db';
-import { checkRateLimit } from '@/lib/rateLimiter';
+import sql from '@/lib/core/db';
+import { checkRateLimit } from '@/lib/core/rateLimiter';
 
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import sql from '@/lib/db';
-import { regenWill } from '@/lib/regenWill';
+import sql from '@/lib/core/db';
+import { regenWill } from '@/lib/game/regenWill';
 
 export async function GET() {
   try {

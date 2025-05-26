@@ -1,4 +1,4 @@
-import sql from '@/lib/db';
+import sql from '@/lib/core/db';
 
 export async function regenWill(
   userId: number,
