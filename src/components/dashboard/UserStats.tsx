@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useSession from '@/hooks/useSession';
+import { calculateTimeToFull } from '@/lib/utils/stats';
 
 export default function UserStats() {
   const [timeToFull, setTimeToFull] = useState('');
@@ -14,20 +15,26 @@ export default function UserStats() {
   const user = session?.user;
   const settings = session?.settings;
 
-  const calculateTimeToFull = (current: number, max: number, rate: number): string => {
-    const missing = max - current;
-    if (missing <= 0 || rate <= 0) return '';
-    const totalMinutes = missing / rate;
-    const minutes = Math.floor(totalMinutes);
-    const seconds = Math.round((totalMinutes - minutes) * 60);
-    return `${minutes > 0 ? `${minutes}m ` : ''}${seconds}s`;
-  };
+  // ⏱️ Live timer for will regen
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
 
+    if (user && settings) {
+      const updateTime = () => {
+        const time = calculateTimeToFull(user.will, settings.max_will, settings.regen_rate_per_minute);
+        setTimeToFull(time);
+      };
+
+      updateTime();
+      interval = setInterval(updateTime, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [user, settings]);
+
+  // 📊 Level progress
   useEffect(() => {
     if (user && settings) {
-      const time = calculateTimeToFull(user.will, settings.max_will, settings.regen_rate_per_minute);
-      setTimeToFull(time);
-
       const nextLevel = user.level + 1;
       fetch(`/api/level/requirement?level=${nextLevel}`)
         .then((res) => res.json())

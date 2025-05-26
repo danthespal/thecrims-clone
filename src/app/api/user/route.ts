@@ -68,6 +68,24 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  if (action === 'settings') {
+    try {
+      const rows: { key: string; value: string }[] = await sql`
+        SELECT key, value FROM "GameSettings"
+      `;
+
+      const settings = rows.reduce<Record<string, string>>((acc, row) => {
+        acc[row.key] = row.value;
+        return acc;
+      }, {});
+
+      return NextResponse.json(settings);
+    } catch (err) {
+      console.error('❌ Failed to load settings:', err);
+      return NextResponse.json({ error: 'Failed to load settings' }, { status: 500 });
+    }
+  }
+
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 }
 
@@ -107,7 +125,6 @@ export async function POST(req: NextRequest) {
         }
 
         if (!body || Object.keys(body).length === 0) {
-          // GET profile
           const [userInfo] = await sql`
             SELECT u.id, u.account_name, u.email, u.profile_name, u.profile_suffix, u.date_of_birth,
                    u.level, u.respect, u.money, u.will, u.last_regen
@@ -134,7 +151,6 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // UPDATE profile
         const { email, profile_name, date_of_birth } = body;
 
         if (
