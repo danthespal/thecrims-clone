@@ -63,9 +63,9 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       return acc;
     }, {} as Record<string, { id: number }>);
 
-    const cleanedInventory = inventory.map(({ id, quantity }) => ({
-      id,
-      quantity: quantity ?? 1,
+    const cleanedInventory = inventory.map((item: ItemWithQuantity) => ({
+      id: item.id,
+      quantity: item.quantity ?? 1,
     }));
 
     console.log('📦 Saving NOW:', { cleanedEquipment, cleanedInventory });
@@ -83,6 +83,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
         console.error('❌ Failed to save:', error);
       } else {
         console.log('✅ Save complete');
+        refreshState();
       }
     });
   };
@@ -92,7 +93,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
 
     const currentItem = equipment[slot];
 
-    const updatedInventory = inventory
+    const updatedInventory: ItemWithQuantity[] = inventory
       .map((i: ItemWithQuantity) =>
         i.id === item.id
           ? { ...i, quantity: (i.quantity ?? 1) - 1 }
@@ -109,7 +110,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const updatedEquipment = {
+    const updatedEquipment: EquipmentSlots = {
       ...equipment,
       [slot]: item,
     };
@@ -130,7 +131,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       updatedInventory.push({ ...item, quantity: 1 });
     }
 
-    const updatedEquipment = {
+    const updatedEquipment: EquipmentSlots = {
       ...equipment,
       [slot]: undefined,
     };
