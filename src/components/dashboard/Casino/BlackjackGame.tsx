@@ -1,153 +1,34 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import toast from "react-hot-toast";
-import CardImage from "@/components/dashboard/Casino/CardImage";
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
+import CardImage from '@/components/dashboard/Casino/CardImage';
+import useBlackjackClientGame from '@/hooks/useBlackjackGame';
 
 interface BlackjackGameProps {
   onResult?: () => void;
 }
 
 export default function BlackjackGame({ onResult }: BlackjackGameProps) {
+  const {
+    bet,
+    setBet,
+    playerHand,
+    dealerHand,
+    revealedDealerCards,
+    playerScore,
+    dealerScore,
+    casinoBalance,
+    netGain,
+    phase,
+    resultText,
+    history,
+    loading,
+    startGame,
+    hit,
+    stand,
+  } = useBlackjackClientGame(onResult);
+
   const chips = [10, 50, 100, 250, 500];
-  const [bet, setBet] = useState(10);
-  const [round, setRound] = useState(1);
-  const [playerHand, setPlayerHand] = useState<string[]>([]);
-  const [dealerHand, setDealerHand] = useState<string[]>([]);
-  const [playerScore, setPlayerScore] = useState(0);
-  const [dealerScore, setDealerScore] = useState(0);
-  const [revealedDealerCards, setRevealedDealerCards] = useState<string[]>([]);
-  const [phase, setPhase] = useState<'idle' | 'player' | 'dealer' | 'done'>('idle');
-  const [resultText, setResultText] = useState('');
-  const [casinoBalance, setCasinoBalance] = useState<number | null>(null);
-  const [netGain, setNetGain] = useState<number | null>(null);
-  const [history, setHistory] = useState<
-    { round: number; player: string[]; dealer: string[]; result: string }[]
-  >([]);
-  const [loading, setLoading] = useState(false);
-
-  const startGame = async () => {
-    if (!Number.isInteger(bet) || bet <= 0) {
-      toast.error('Please select a valid bet.');
-      return;
-    }
-    if (casinoBalance !== null && bet > casinoBalance) {
-      toast.error('You do not have enough funds for this bet.');
-      return;
-    }
-    setLoading(true);
-    setPhase('idle');
-    setPlayerHand([]);
-    setDealerHand([]);
-    setRevealedDealerCards([]);
-    setNetGain(null);
-    setResultText('');
-    try {
-      const res = await fetch('/api/casino/blackjack?action=start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bet }),
-      });
-      const data = await res.json();
-      if (!res.ok || data?.error) throw new Error(data?.error || 'Server rejected the bet.');
-
-      setPlayerHand(data.player);
-      setDealerHand(data.dealer);
-      setPlayerScore(data.playerScore);
-      setDealerScore(data.dealerScore);
-      setCasinoBalance(data.casinoBalance);
-      const nextRound = round + 1;
-      setRound(nextRound);
-      onResult?.();
-
-      if (data.playerScore === 21 && data.player.length === 2) {
-        toast.success('BLACKJACK! 🎉');
-        setResultText('BLACKJACK');
-        setRevealedDealerCards(data.dealer);
-        setPhase('done');
-        await resolveResult(data.player, data.dealer, nextRound - 1);
-        onResult?.();
-      } else {
-        setPhase('player');
-      }
-    } catch (err) {
-      toast.error((err as Error).message || 'Error starting game');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const hit = async () => {
-    try {
-      const res = await fetch('/api/casino/blackjack?action=hit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hand: playerHand }),
-      });
-      const data = await res.json();
-      if (!data || data.error) throw new Error(data?.error || 'Hit failed');
-
-      setPlayerHand(data.updatedHand);
-      setPlayerScore(data.score);
-
-      if (data.bust) {
-        toast.error('You busted! 💥');
-        setRevealedDealerCards(dealerHand);
-        setPhase('done');
-        await resolveResult(data.updatedHand, dealerHand, round - 1);
-      }
-    } catch (err) {
-      toast.error((err as Error).message || 'Error on hit');
-    }
-  };
-
-  const stand = async () => {
-    setPhase('dealer');
-    try {
-      const res = await fetch('/api/casino/blackjack?action=stand', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealerHand }),
-      });
-      const data = await res.json();
-      if (!data || data.error) throw new Error(data?.error || 'Stand failed');
-
-      setDealerHand(data.dealerHand);
-      setRevealedDealerCards(data.dealerHand);
-      setDealerScore(data.dealerScore);
-      setPhase('done');
-      await resolveResult(playerHand, data.dealerHand, round - 1);
-    } catch (err) {
-      toast.error((err as Error).message || 'Error on stand');
-    }
-  };
-
-  const resolveResult = async (playerCards: string[], dealerCards: string[], roundNumber: number) => {
-    try {
-      const res = await fetch('/api/casino/blackjack?action=resolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bet, playerHand: playerCards, dealerHand: dealerCards }),
-      });
-      const data = await res.json();
-      if (data?.success) {
-        setCasinoBalance(data.casinoBalance);
-        setNetGain(data.payout);
-        setResultText(data.validatedResult.toUpperCase());
-        setHistory((prev) => [
-          { round: roundNumber, player: [...playerCards], dealer: [...dealerCards], result: data.validatedResult.toUpperCase() },
-          ...prev,
-        ].slice(0, 5));
-        toast.success(`Result: ${data.validatedResult.toUpperCase()} — ${data.payout > 0 ? '+' + data.payout : 'No win'}`);
-        onResult?.();
-      } else {
-        toast.error(data.error || 'Resolve failed');
-      }
-    } catch (err) {
-      toast.error((err as Error).message || 'Server error resolving result');
-    }
-  };
 
   return (
     <div className="bg-green-900 flex items-start justify-center gap-6 px-4 py-10 text-white">
@@ -158,34 +39,34 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
           <p className="text-sm text-gray-300 italic mb-6">Blackjack pays 3:2</p>
 
           {phase !== 'idle' && (
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-teal-300">Dealer&#39;s Hand</h3>
-              <div className="flex justify-center gap-2 py-2">
-                {phase === 'player' && dealerHand.length === 2
-                  ? (
+            <>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-teal-300">Dealer&#39;s Hand</h3>
+                <div className="flex justify-center gap-2 py-2">
+                  {phase === 'player' && dealerHand.length === 2 ? (
                     <>
                       <CardImage card={dealerHand[1]} />
                       <CardImage card={dealerHand[0]} faceDown />
                     </>
-                  )
-                  : revealedDealerCards.map((card, i) => (
+                  ) : (
+                    revealedDealerCards.map((card, i) => (
                       <CardImage key={i} card={card} delay={i * 0.2} />
-                    ))}
+                    ))
+                  )}
+                </div>
+                <p className="text-sm">Total: {phase === 'done' ? dealerScore : '???'}</p>
               </div>
-              <p className="text-sm">Total: {phase === 'done' ? dealerScore : '???'}</p>
-            </div>
-          )}
 
-          {phase !== 'idle' && (
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-teal-300">Your Hand</h3>
-              <div className="flex justify-center gap-2 py-2">
-                {playerHand.map((card, i) => (
-                  <CardImage key={i} card={card} />
-                ))}
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-teal-300">Your Hand</h3>
+                <div className="flex justify-center gap-2 py-2">
+                  {playerHand.map((card, i) => (
+                    <CardImage key={i} card={card} />
+                  ))}
+                </div>
+                <p className="text-sm">Total: {playerScore}</p>
               </div>
-              <p className="text-sm">Total: {playerScore}</p>
-            </div>
+            </>
           )}
 
           {phase === 'player' && (
@@ -204,12 +85,17 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
               <p className="text-lg font-bold">
                 🎲 Result: {resultText === 'BLACKJACK' ? 'BLACKJACK 🎉' : resultText}
               </p>
-              {netGain !== null && <p className="text-sm text-gray-300">{netGain > 0 ? `+${netGain}` : `${netGain}`} 💰</p>}
+              {netGain !== null && (
+                <p className="text-sm text-gray-300">{netGain > 0 ? `+${netGain}` : `${netGain}`} 💰</p>
+              )}
               <p className="mb-2">💰 Your balance: ${casinoBalance}</p>
-              <button onClick={startGame} className="bg-teal-600 hover:bg-teal-500 px-4 py-2 rounded">Play Again</button>
+              <button onClick={startGame} className="bg-teal-600 hover:bg-teal-500 px-4 py-2 rounded">
+                Play Again
+              </button>
             </motion.div>
           )}
 
+          {/* Betting Controls */}
           <div className="text-center">
             <p className="text-sm text-gray-400">Choose your bet:</p>
             <div className="flex justify-center gap-3 mt-2 flex-wrap">
@@ -219,8 +105,14 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
                   onClick={() => setBet(chip)}
                   disabled={casinoBalance !== null && chip > casinoBalance}
                   className={`px-4 py-2 rounded font-bold border transition-transform hover:scale-110 ${
-                    bet === chip ? 'bg-yellow-400 text-black border-yellow-500' : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
-                  } ${casinoBalance !== null && chip > casinoBalance ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    bet === chip
+                      ? 'bg-yellow-400 text-black border-yellow-500'
+                      : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+                  } ${
+                    casinoBalance !== null && chip > casinoBalance
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
+                  }`}
                 >
                   ${chip}
                 </button>
@@ -235,7 +127,11 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
                 disabled={loading || (casinoBalance !== null && casinoBalance <= 0)}
                 className="mt-4 bg-green-600 hover:bg-green-500 px-6 py-2 rounded font-semibold disabled:opacity-50"
               >
-                {casinoBalance !== null && casinoBalance <= 0 ? 'Insufficient Funds' : loading ? 'Dealing...' : 'Start Game'}
+                {casinoBalance !== null && casinoBalance <= 0
+                  ? 'Insufficient Funds'
+                  : loading
+                  ? 'Dealing...'
+                  : 'Start Game'}
               </button>
             </div>
           )}
@@ -251,7 +147,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
               {history.map((h, idx) => (
                 <li key={idx} className="border-b border-gray-700 pb-1">
                   <span className="text-teal-500 font-semibold">Round {h.round}:</span>
-                  🧑 {h.player.join(' ')} vs 🃏 {h.dealer.join(' ')} —
+                  🧑 {h.player.join(' ')} vs 🃏 {h.dealer.join(' ')} —{' '}
                   <span className="ml-2 font-bold text-teal-400">{h.result}</span>
                 </li>
               ))}

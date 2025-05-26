@@ -54,16 +54,12 @@ export default function LoginForm() {
 
       toast.success('Logged in!');
 
-      // wait for session cookie propagation
-      await new Promise((resolve) => setTimeout(resolve, 100));
-          
-      // verify session exists before redirect
-      const verify = await fetch('/api/user/session');
-      if (verify.ok) {
-        window.location.href = '/dashboard';
-      } else {
-        toast.error('Session not ready. Please try again.');
-      }
+      // Notify SWR to refresh session
+      window.dispatchEvent(new Event('user:update'));
+
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
+
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : 'An unknown error occurred';

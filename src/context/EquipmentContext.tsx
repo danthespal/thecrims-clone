@@ -3,12 +3,10 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useState,
   ReactNode,
 } from 'react';
 import type { Item as BaseItem } from '@/lib/game/itemLoader';
-import useSession from '@/hooks/useSession';
+import useGear from '@/hooks/useGear';
 
 export type ItemWithQuantity = BaseItem & {
   quantity?: number;
@@ -46,66 +44,48 @@ export const slotRules: Record<keyof EquipmentSlots, BaseItem['type']> = {
 };
 
 export function EquipmentProvider({ children }: { children: ReactNode }) {
-  const [equipment, setEquipment] = useState<EquipmentSlots>({});
-  const [inventory, setInventory] = useState<ItemWithQuantity[]>([]);
-  const { session } = useSession();
-
-  const refreshState = async () => {
-  try {
-    const res = await fetch('/api/gear?action=load', {
-      method: 'GET',
-    });
-    const data = await res.json();
-
-    console.log('📥 Gear loaded:', data);
-
-    if (!Array.isArray(data.inventory)) {
-      console.warn('⚠️ Inventory is not an array:', data.inventory);
-    }
-
-    setEquipment(data.equipment || {});
-    setInventory(data.inventory || []);
-  } catch (err) {
-    console.error('❌ Failed to load gear/inventory:', err);
-  }
-};
+  const {
+    equipment,
+    inventory,
+    refresh: refreshState,
+  } = useGear();
 
   const saveState = async () => {
     sendSave(equipment, inventory);
   };
 
   const sendSave = (
-  equipment: EquipmentSlots,
-  inventory: ItemWithQuantity[]
-) => {
-  const cleanedEquipment = Object.entries(equipment).reduce((acc, [slot, item]) => {
-    if (item?.id != null) acc[slot] = { id: item.id };
-    return acc;
-  }, {} as Record<string, { id: number }>);
+    equipment: EquipmentSlots,
+    inventory: ItemWithQuantity[]
+  ) => {
+    const cleanedEquipment = Object.entries(equipment).reduce((acc, [slot, item]) => {
+      if (item?.id != null) acc[slot] = { id: item.id };
+      return acc;
+    }, {} as Record<string, { id: number }>);
 
-  const cleanedInventory = inventory.map(({ id, quantity }) => ({
-    id,
-    quantity: quantity ?? 1,
-  }));
+    const cleanedInventory = inventory.map(({ id, quantity }) => ({
+      id,
+      quantity: quantity ?? 1,
+    }));
 
-  console.log('📦 Saving NOW:', { cleanedEquipment, cleanedInventory });
+    console.log('📦 Saving NOW:', { cleanedEquipment, cleanedInventory });
 
-  fetch('/api/gear?action=save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      equipment: cleanedEquipment,
-      inventory: cleanedInventory,
-    }),
-  }).then(async (res) => {
-    if (!res.ok) {
-      const error = await res.json();
-      console.error('❌ Failed to save:', error);
-    } else {
-      console.log('✅ Save complete');
-    }
-  });
-};
+    fetch('/api/gear?action=save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        equipment: cleanedEquipment,
+        inventory: cleanedInventory,
+      }),
+    }).then(async (res) => {
+      if (!res.ok) {
+        const error = await res.json();
+        console.error('❌ Failed to save:', error);
+      } else {
+        console.log('✅ Save complete');
+      }
+    });
+  };
 
   const equipItem = (slot: keyof EquipmentSlots, item: BaseItem) => {
     if (slotRules[slot] !== item.type) return;
@@ -113,14 +93,15 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
     const currentItem = equipment[slot];
 
     const updatedInventory = inventory
-      .map(i => i.id === item.id
-        ? { ...i, quantity: (i.quantity ?? 1) - 1}
-        : i
+      .map((i: ItemWithQuantity) =>
+        i.id === item.id
+          ? { ...i, quantity: (i.quantity ?? 1) - 1 }
+          : i
       )
-      .filter(i => (i.quantity ?? 1) > 0);
+      .filter((i: ItemWithQuantity) => (i.quantity ?? 1) > 0);
 
     if (currentItem) {
-      const existing = updatedInventory.find(i => i.id === currentItem.id);
+      const existing = updatedInventory.find((i: ItemWithQuantity) => i.id === currentItem.id);
       if (existing) {
         existing.quantity = (existing.quantity ?? 1) + 1;
       } else {
@@ -133,20 +114,15 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       [slot]: item,
     };
 
-    setInventory(updatedInventory);
-    setEquipment(updatedEquipment);
-
-    setTimeout(() => {
-      sendSave(updatedEquipment, updatedInventory);
-    }, 10);
+    sendSave(updatedEquipment, updatedInventory);
   };
 
   const unequipItem = (slot: keyof EquipmentSlots) => {
     const item = equipment[slot];
-    if  (!item) return;
+    if (!item) return;
 
     const updatedInventory = [...inventory];
-    const existing = updatedInventory.find(i => i.id === item.id);
+    const existing = updatedInventory.find((i: ItemWithQuantity) => i.id === item.id);
 
     if (existing) {
       existing.quantity = (existing.quantity ?? 1) + 1;
@@ -159,19 +135,8 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       [slot]: undefined,
     };
 
-    setInventory(updatedInventory);
-    setEquipment(updatedEquipment);
-
-    setTimeout(() => {
-      sendSave(updatedEquipment, updatedInventory);
-    }, 10);
+    sendSave(updatedEquipment, updatedInventory);
   };
-
-  useEffect(() => {
-    if (session?.user?.id) {
-      refreshState();
-    }
-  }, [session]);
 
   return (
     <EquipmentContext.Provider

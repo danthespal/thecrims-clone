@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import GameUpdates from '@/components/dashboard/Street/GameUpdates';
 import StreetNews from '@/components/dashboard/Street/StreetNews';
 import ActionTabs from '@/components/dashboard/Street/ActionTabs';
 import { useEquipmentContext } from '@/context/EquipmentContext';
 import useSession from '@/hooks/useSession';
+import useItems from '@/hooks/useItems';
 
 interface Item {
   id: number;
@@ -19,28 +20,12 @@ const itemTypes = ['weapon', 'armor', 'helmet', 'boots', 'amulet', 'ring', 'glov
 
 const StreetPage = () => {
   const [activeTab, setActiveTab] = useState('Weapons');
-  const [items, setItems] = useState<Item[]>([]);
   const [selectedType, setSelectedType] = useState<string>('weapon');
   const [feedback, setFeedback] = useState<string | null>(null);
   const { refreshState } = useEquipmentContext();
   const { session, refresh } = useSession();
+  const { items, loading } = useItems();
   const money = session?.user?.money ?? 0;
-
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        const res = await fetch('/api/items?action=all');
-        const { items } = await res.json();
-        setItems(items);
-      } catch (error) {
-        console.error('Failed to load items:', error);
-      }
-    };
-
-    if (activeTab === 'Weapons') {
-      fetchItems();
-    }
-  }, [activeTab]);
 
   const handleBuy = async (itemId: number) => {
     try {
@@ -49,9 +34,9 @@ const StreetPage = () => {
         body: JSON.stringify({ item_id: itemId }),
         headers: { 'Content-Type': 'application/json' },
       });
-    
+
       const result = await res.json();
-    
+
       if (res.ok) {
         setFeedback(result.message || 'Item purchased!');
         await refreshState();
@@ -63,10 +48,9 @@ const StreetPage = () => {
       console.error(err);
       setFeedback('Purchase failed.');
     }
-  
+
     setTimeout(() => setFeedback(null), 3000);
   };
-
 
   return (
     <div className="space-y-6">
@@ -107,34 +91,38 @@ const StreetPage = () => {
               </p>
             )}
 
-            <ul className="space-y-3">
-              {items
-                .filter((item) => item.type === selectedType)
-                .map((item) => {
-                  const canAfford = money >= item.price;
-                  return (
-                    <li
-                      key={item.id}
-                      className="p-4 bg-gray-900 rounded-lg border border-gray-700"
-                    >
-                      <h3 className="text-lg font-bold text-white">{item.name}</h3>
-                      <p className="text-gray-400">{item.description}</p>
-                      <p className="text-yellow-400 font-medium">Price: ${item.price}</p>
-                      <button
-                        onClick={() => handleBuy(item.id)}
-                        disabled={!canAfford}
-                        className={`mt-2 px-4 py-1 text-sm rounded transition ${
-                          canAfford
-                            ? 'bg-teal-600 text-white hover:bg-teal-500'
-                            : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-                        }`}
+            {loading ? (
+              <p className="text-gray-300">Loading items...</p>
+            ) : (
+              <ul className="space-y-3">
+                {items
+                  .filter((item: Item) => item.type === selectedType)
+                  .map((item: Item) => {
+                    const canAfford = money >= item.price;
+                    return (
+                      <li
+                        key={item.id}
+                        className="p-4 bg-gray-900 rounded-lg border border-gray-700"
                       >
-                        {canAfford ? 'Buy' : 'Not enough money'}
-                      </button>
-                    </li>
-                  );
-                })}
-            </ul>
+                        <h3 className="text-lg font-bold text-white">{item.name}</h3>
+                        <p className="text-gray-400">{item.description}</p>
+                        <p className="text-yellow-400 font-medium">Price: ${item.price}</p>
+                        <button
+                          onClick={() => handleBuy(item.id)}
+                          disabled={!canAfford}
+                          className={`mt-2 px-4 py-1 text-sm rounded transition ${
+                            canAfford
+                              ? 'bg-teal-600 text-white hover:bg-teal-500'
+                              : 'bg-gray-600 text-gray-300 cursor-not-allowed'
+                          }`}
+                        >
+                          {canAfford ? 'Buy' : 'Not enough money'}
+                        </button>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
           </div>
         )}
 

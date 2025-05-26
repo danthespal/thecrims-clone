@@ -7,7 +7,7 @@ import type { JSX } from 'react';
 
 import UserStats from '@/components/dashboard/UserStats';
 import SidebarMenu from '@/components/dashboard/SidebarMenu';
-import StreetPage from '@/app/dashboard/street/page';
+import StreetPage from '@/app/dashboard/Street/page';
 import Robbery from '@/components/dashboard/Robbery/Robbery';
 import Casino from '@/app/dashboard/Casino/page';
 import CharacterInventory from '@/components/dashboard/Inventory/CharacterInventory';
