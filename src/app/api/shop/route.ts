@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
-import { getUserFromSession } from '@/lib/sessionUser';
+import { getUserFromSession } from '@/lib/session';
 import { getItemById } from '@/lib/itemLoader';
 import { checkRateLimit } from '@/lib/rateLimiter';
 

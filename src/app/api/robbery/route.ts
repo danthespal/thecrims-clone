@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { robberyActions, RobberyAction } from '@/lib/robberyConfig';
 import { checkRateLimit } from '@/lib/rateLimiter';
-import { getUserFromSession } from '@/lib/sessionUser';
+import { getUserFromSession } from '@/lib/session';
 
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);
