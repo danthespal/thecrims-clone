@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 
     case 'stand': {
       const { dealerHand } = body;
-      if (!Array.isArray(dealerHand) || dealerHand.some((c) => typeof c !== 'string')) {
+      if (!dealerHand || !Array.isArray(dealerHand) || dealerHand.length === 0 || dealerHand.some((c) => typeof c !== 'string')) {
         return NextResponse.json({ error: 'Invalid dealer hand' }, { status: 400 });
       }
 

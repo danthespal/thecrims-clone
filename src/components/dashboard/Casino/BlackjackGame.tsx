@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import CardImage from '@/components/dashboard/Casino/CardImage';
 import useBlackjackClientGame from '@/hooks/useBlackjackGame';
+import { calculateVisibleDealerScore } from '@/lib/game/blackjackUtils';
 
 interface BlackjackGameProps {
   onResult?: () => void;
@@ -18,6 +19,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
     playerScore,
     dealerScore,
     casinoBalance,
+    finalBalance,
     netGain,
     phase,
     resultText,
@@ -54,7 +56,9 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
                     ))
                   )}
                 </div>
-                <p className="text-sm">Total: {phase === 'done' ? dealerScore : '???'}</p>
+                <p className="text-sm">
+                  Total: {phase === 'done' ? dealerScore : calculateVisibleDealerScore(dealerHand)}
+                </p>
               </div>
 
               <div className="text-center">
@@ -88,7 +92,7 @@ export default function BlackjackGame({ onResult }: BlackjackGameProps) {
               {netGain !== null && (
                 <p className="text-sm text-gray-300">{netGain > 0 ? `+${netGain}` : `${netGain}`} 💰</p>
               )}
-              <p className="mb-2">💰 Your balance: ${casinoBalance}</p>
+              <p className="mb-2">💰 Your balance: ${finalBalance ?? casinoBalance}</p>
               <button onClick={startGame} className="bg-teal-600 hover:bg-teal-500 px-4 py-2 rounded">
                 Play Again
               </button>

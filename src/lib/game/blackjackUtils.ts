@@ -30,3 +30,10 @@ export const calculateScore = (hand: string[]) => {
 
   return total;
 };
+
+export const calculateVisibleDealerScore = (dealerHand: string[]): number | string => {
+  if (!dealerHand || dealerHand.length < 2) return '?';
+  const visibleCard = dealerHand[1];
+  const value = visibleCard.replace(/[♠♥♦♣]/g, '');
+  return CARD_VALUES[value] ?? '?';
+};

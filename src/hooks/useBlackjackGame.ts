@@ -18,6 +18,7 @@ interface BlackjackGameState {
   resultText: string;
   casinoBalance: number | null;
   netGain: number | null;
+  finalBalance: number | null;
   history: { round: number; player: string[]; dealer: string[]; result: string }[];
   loading: boolean;
   setBet: (value: number) => void;
@@ -37,6 +38,7 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
   const [phase, setPhase] = useState<GamePhase>('idle');
   const [resultText, setResultText] = useState('');
   const [netGain, setNetGain] = useState<number | null>(null);
+  const [finalBalance, setFinalBalance] = useState<number | null>(null);
   const [history, setHistory] = useState<
     { round: number; player: string[]; dealer: string[]; result: string }[]
   >([]);
@@ -61,6 +63,7 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
     setRevealedDealerCards([]);
     setNetGain(null);
     setResultText('');
+    setFinalBalance(null); // Reset final balance override
 
     try {
       const res = await fetch('/api/casino/blackjack?action=start', {
@@ -132,6 +135,11 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
       const data = await res.json();
       if (!data || data.error) throw new Error(data?.error || 'Stand failed');
 
+      if (typeof data.dealerScore !== 'number') {
+        toast.error('Dealer score missing from server.');
+        return;
+      }
+
       setDealerHand(data.dealerHand);
       setRevealedDealerCards(data.dealerHand);
       setDealerScore(data.dealerScore);
@@ -156,6 +164,7 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
       const data = await res.json();
       if (data?.success) {
         setNetGain(data.payout);
+        setFinalBalance(data.casinoBalance); // 👈 store final balance from server
         setResultText(data.validatedResult.toUpperCase());
         setHistory((prev) => [
           {
@@ -171,7 +180,7 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
             data.payout > 0 ? '+' + data.payout : 'No win'
           }`
         );
-        await refreshCasinoBalance(); // update global balance after resolution
+        await refreshCasinoBalance();
         onResult?.();
       } else {
         toast.error(data.error || 'Resolve failed');
@@ -191,6 +200,7 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
     playerScore,
     dealerScore,
     casinoBalance,
+    finalBalance,
     netGain,
     phase,
     resultText,
