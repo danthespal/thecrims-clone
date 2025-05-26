@@ -20,27 +20,30 @@ export default function useShop() {
 
   const items = useMemo(() => data ?? [], [data]);
 
-  const buyItem = useCallback(async (itemId: number, quantity: number = 1): Promise<BuyItemResult> => {
-    setIsBuying(true);
-    setShopError(null);
-    try {
-      const res = await fetch('/api/shop?action=buy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: itemId, quantity }),
-      });
-      const result: BuyItemResult = await res.json();
-      setLastResult(result);
-      if (result.success) await mutate();
-      return result;
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to buy item';
-      setShopError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      setIsBuying(false);
-    }
-  }, [mutate]);
+  const buyItem = useCallback(
+    async (itemId: number, quantity: number = 1): Promise<BuyItemResult> => {
+      setIsBuying(true);
+      setShopError(null);
+      try {
+        const res = await fetch('/api/shop?action=buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: itemId, quantity }),
+        });
+        const result: BuyItemResult = await res.json();
+        setLastResult(result);
+        if (result.success) await mutate();
+        return result;
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to buy item';
+        setShopError(errorMessage);
+        return { success: false, error: errorMessage };
+      } finally {
+        setIsBuying(false);
+      }
+    },
+    [mutate]
+  );
 
   return {
     items,
