@@ -12,7 +12,7 @@ export default function Inventory() {
     <InventoryItem key={item.id} item={item} />
   ));
 
-  const emptySlots = Array.from({ length: Math.max(0, TOTAL_SLOTS - inventory.length) }).map((_, index) => (
+  const emptySlots = Array.from({ length: Math.max(0, TOTAL_SLOTS - inventory.length) }).map((__, index) => (
     <div
       key={`empty-${index}`}
       className="border border-gray-700 rounded-lg bg-gray-900 opacity-50 h-20"
