@@ -6,6 +6,10 @@ export interface RobberyHandlerResult {
   earnedRespect: number;
   message: string;
   levelUp?: number | null;
+  currentWill: number;
+  currentMoney: number;
+  currentRespect: number;
+  currentLevel: number;
 }
 
 export const robberyActions = {
@@ -74,11 +78,12 @@ async function handleRobbery(action: RobberyAction, userId: string): Promise<Rob
 
   const newRespect = user.respect + config.respectReward;
   const newMoney = user.money + config.moneyReward;
+  const newWill = user.will - config.willCost;
 
   await sql.begin(async (tx) => {
     await tx`
       UPDATE "User"
-      SET will = will - ${config.willCost},
+      SET will = ${newWill},
           money = ${newMoney},
           respect = ${newRespect}
       WHERE id = ${user.id}
@@ -99,5 +104,9 @@ async function handleRobbery(action: RobberyAction, userId: string): Promise<Rob
     earnedRespect: config.respectReward,
     message: `${config.label} success!`,
     levelUp: newLevel > user.level ? newLevel : null,
+    currentWill: newWill,
+    currentMoney: newMoney,
+    currentRespect: newRespect,
+    currentLevel: newLevel,
   };
 }

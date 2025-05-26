@@ -26,6 +26,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await config.handler(user.id);
+
     return NextResponse.json({
       success: true,
       result,

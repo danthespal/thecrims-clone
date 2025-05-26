@@ -11,6 +11,12 @@ export default function RobberyButton({ action, label }: RobberyButtonProps) {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [message, setMessage] = useState('');
+  const [userStats, setUserStats] = useState<{
+    money?: number;
+    respect?: number;
+    will?: number;
+    level?: number;
+  }>({});
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -42,9 +48,30 @@ export default function RobberyButton({ action, label }: RobberyButtonProps) {
     setLoading(false);
 
     if (res.ok && data.result) {
-      const { earnedMoney, earnedRespect } = data.result;
-      setMessage(`✅ You gained $${earnedMoney} and ${earnedRespect} respect.`);
+      const {
+        earnedMoney,
+        earnedRespect,
+        currentMoney,
+        currentRespect,
+        currentWill,
+        currentLevel,
+        levelUp,
+      } = data.result;
+
+      setMessage(
+        `✅ You gained $${earnedMoney} and ${earnedRespect} respect.` +
+          (levelUp ? ` Leveled up to ${currentLevel}!` : '')
+      );
+
+      setUserStats({
+        money: currentMoney,
+        respect: currentRespect,
+        will: currentWill,
+        level: currentLevel,
+      });
+
       setCooldown(data.cooldown ?? 0);
+
       window.dispatchEvent(new Event('user:update'));
     } else {
       if (data.error?.toLowerCase().includes('will')) {
@@ -74,8 +101,12 @@ export default function RobberyButton({ action, label }: RobberyButtonProps) {
         {cooldown > 0 ? `Cooldown: ${cooldown}s` : loading ? 'Robbing...' : label}
       </button>
 
-      {message && (
-        <p className="text-sm text-center text-gray-300">{message}</p>
+      {message && <p className="text-sm text-center text-gray-300">{message}</p>}
+
+      {userStats.money !== undefined && (
+        <div className="text-xs text-gray-400 mt-1 text-center">
+          💰 ${userStats.money} | 💪 {userStats.will} | 🌟 {userStats.respect} RP | 🧬 Lvl {userStats.level}
+        </div>
       )}
     </div>
   );
