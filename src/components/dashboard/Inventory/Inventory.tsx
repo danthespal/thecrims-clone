@@ -1,7 +1,7 @@
 'use client';
 
 import { useEquipmentContext } from '@/context/EquipmentContext';
-import InventoryItem from './InventoryItem';
+import InventoryItem from '@/components/dashboard/Inventory/InventoryItem';
 
 const TOTAL_SLOTS = 36;
 
