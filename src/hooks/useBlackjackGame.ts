@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { useCasinoBalance } from '@/context/CasinoBalanceContext';
 
 export type GamePhase = 'idle' | 'player' | 'dealer' | 'done';
 
@@ -35,12 +36,13 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
   const [revealedDealerCards, setRevealedDealerCards] = useState<string[]>([]);
   const [phase, setPhase] = useState<GamePhase>('idle');
   const [resultText, setResultText] = useState('');
-  const [casinoBalance, setCasinoBalance] = useState<number | null>(null);
   const [netGain, setNetGain] = useState<number | null>(null);
   const [history, setHistory] = useState<
     { round: number; player: string[]; dealer: string[]; result: string }[]
   >([]);
   const [loading, setLoading] = useState(false);
+
+  const { balance: casinoBalance, refresh: refreshCasinoBalance } = useCasinoBalance();
 
   const startGame = async () => {
     if (!Number.isInteger(bet) || bet <= 0) {
@@ -73,7 +75,6 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
       setDealerHand(data.dealer);
       setPlayerScore(data.playerScore);
       setDealerScore(data.dealerScore);
-      setCasinoBalance(data.casinoBalance);
 
       const nextRound = round + 1;
       setRound(nextRound);
@@ -141,7 +142,11 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
     }
   };
 
-  const resolveResult = async (playerCards: string[], dealerCards: string[], roundNumber: number) => {
+  const resolveResult = async (
+    playerCards: string[],
+    dealerCards: string[],
+    roundNumber: number
+  ) => {
     try {
       const res = await fetch('/api/casino/blackjack?action=resolve', {
         method: 'POST',
@@ -150,14 +155,23 @@ export default function useBlackjackClientGame(onResult?: () => void): Blackjack
       });
       const data = await res.json();
       if (data?.success) {
-        setCasinoBalance(data.casinoBalance);
         setNetGain(data.payout);
         setResultText(data.validatedResult.toUpperCase());
         setHistory((prev) => [
-          { round: roundNumber, player: [...playerCards], dealer: [...dealerCards], result: data.validatedResult.toUpperCase() },
+          {
+            round: roundNumber,
+            player: [...playerCards],
+            dealer: [...dealerCards],
+            result: data.validatedResult.toUpperCase(),
+          },
           ...prev,
         ].slice(0, 5));
-        toast.success(`Result: ${data.validatedResult.toUpperCase()} — ${data.payout > 0 ? '+' + data.payout : 'No win'}`);
+        toast.success(
+          `Result: ${data.validatedResult.toUpperCase()} — ${
+            data.payout > 0 ? '+' + data.payout : 'No win'
+          }`
+        );
+        await refreshCasinoBalance(); // update global balance after resolution
         onResult?.();
       } else {
         toast.error(data.error || 'Resolve failed');

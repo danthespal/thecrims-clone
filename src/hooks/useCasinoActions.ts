@@ -2,17 +2,19 @@
 
 import { useState } from 'react';
 import useCasinoHistory from '@/hooks/useCasinoHistory';
+import { depositToCasino, withdrawFromCasino } from '@/lib/services/casino';
 
 export default function useCasinoActions() {
   const { refresh } = useCasinoHistory();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const isValidAmount = (val: string | number) =>
-    !isNaN(Number(val)) && Number(val) > 0;
-
-  const post = async (action: 'deposit' | 'withdraw', amount: string | number) => {
-    if (!isValidAmount(amount)) {
+  const handle = async (
+    action: 'deposit' | 'withdraw',
+    amount: string | number
+  ) => {
+    const num = Number(amount);
+    if (isNaN(num) || num <= 0) {
       setMessage('❌ Invalid amount');
       return false;
     }
@@ -21,21 +23,17 @@ export default function useCasinoActions() {
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/casino?action=${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount }),
-      });
+      const res = action === 'deposit'
+        ? await depositToCasino(num)
+        : await withdrawFromCasino(num);
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setMessage(`✅ ${action === 'deposit' ? 'Deposit' : 'Withdrawal'} successful`);
+      if (res.success) {
+        setMessage(`✅ ${action} successful`);
         refresh();
         window.dispatchEvent(new Event('user:update'));
         return true;
       } else {
-        setMessage(`❌ ${data.error || `Failed to ${action}`}`);
+        setMessage(`❌ ${res.error || `Failed to ${action}`}`);
         return false;
       }
     } catch {
@@ -49,7 +47,7 @@ export default function useCasinoActions() {
   return {
     loading,
     message,
-    deposit: (amount: string | number) => post('deposit', amount),
-    withdraw: (amount: string | number) => post('withdraw', amount),
+    deposit: (amount: string | number) => handle('deposit', amount),
+    withdraw: (amount: string | number) => handle('withdraw', amount),
   };
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { EquipmentProvider } from '@/context/EquipmentContext';
+import { CasinoBalanceProvider } from '@/context/CasinoBalanceContext';
 import { Toaster } from 'react-hot-toast';
 
 // Font configuration
@@ -25,8 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <EquipmentProvider>
-          <Toaster position="top-center" />
-          {children}
+          <CasinoBalanceProvider>
+            <Toaster position="top-center" />
+            {children}
+          </CasinoBalanceProvider>
         </EquipmentProvider>
       </body>
     </html>

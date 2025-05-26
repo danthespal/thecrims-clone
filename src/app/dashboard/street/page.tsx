@@ -7,6 +7,7 @@ import ActionTabs from '@/components/dashboard/Street/ActionTabs';
 import { useEquipmentContext } from '@/context/EquipmentContext';
 import useSession from '@/hooks/useSession';
 import useItems from '@/hooks/useItems';
+import { buyItem } from '@/lib/services/shop';
 
 interface Item {
   id: number;
@@ -29,26 +30,15 @@ const StreetPage = () => {
 
   const handleBuy = async (itemId: number) => {
     try {
-      const res = await fetch('/api/shop?action=buy', {
-        method: 'POST',
-        body: JSON.stringify({ item_id: itemId }),
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      const result = await res.json();
-
-      if (res.ok) {
-        setFeedback(result.message || 'Item purchased!');
-        await refreshState();
-        await refresh();
-      } else {
-        setFeedback(result.error || 'Purchase failed.');
-      }
+      const result = await buyItem(itemId);
+      if (!result.success) throw new Error(result.error || 'Purchase failed');
+      setFeedback(result.message || 'Item purchased!');
+      await refreshState();
+      await refresh();
     } catch (err) {
       console.error(err);
-      setFeedback('Purchase failed.');
+      setFeedback((err as Error).message || 'Purchase failed.');
     }
-
     setTimeout(() => setFeedback(null), 3000);
   };
 

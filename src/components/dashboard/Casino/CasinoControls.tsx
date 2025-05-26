@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import TransactionList from './TransactionList';
-import useCasinoHistory from '@/hooks/useCasinoHistory';
 import useCasinoActions from '@/hooks/useCasinoActions';
+import { useCasinoBalance } from '@/context/CasinoBalanceContext';
+import useCasinoHistory from '@/hooks/useCasinoHistory';
 
 interface Props {
   onSuccess?: () => void;
@@ -13,13 +14,9 @@ export default function CasinoControls({ onSuccess }: Props) {
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
 
-  const { transactions, totals } = useCasinoHistory();
-  const {
-    deposit,
-    withdraw,
-    loading,
-    message,
-  } = useCasinoActions();
+  const { deposit, withdraw, loading, message } = useCasinoActions();
+  const { balance } = useCasinoBalance();
+  const { transactions } = useCasinoHistory();
 
   const isValid = (val: string) =>
     !isNaN(Number(val)) && Number(val) > 0;
@@ -86,22 +83,14 @@ export default function CasinoControls({ onSuccess }: Props) {
       {/* Right Card */}
       <div className="bg-gray-900 rounded-lg border border-gray-700 p-4 space-y-4 w-full md:max-w-xl">
         <h3 className="text-lg font-semibold">Transaction History</h3>
-        {totals && (
-          <div className="text-sm text-gray-300 space-y-1">
-            <p>
-              Total Deposited:{' '}
-              <span className="text-green-400 font-semibold">
-                ${totals.total_deposit ?? 0}
-              </span>
-            </p>
-            <p>
-              Total Withdrawn:{' '}
-              <span className="text-red-400 font-semibold">
-                ${totals.total_withdraw ?? 0}
-              </span>
-            </p>
-          </div>
-        )}
+        <div className="text-sm text-gray-300 space-y-1">
+          <p>
+            Current Casino Balance:{' '}
+            <span className="text-teal-400 font-semibold">
+              ${balance}
+            </span>
+          </p>
+        </div>
         <TransactionList transactions={transactions} />
       </div>
     </div>
