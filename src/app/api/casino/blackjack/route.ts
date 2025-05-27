@@ -1,35 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import sql from '@/lib/core/db';
 import { drawCard, calculateScore } from '@/lib/game/blackjackUtils';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
+import { getUserFromSession } from '@/lib/session';
 
-// Helper: get userId from session cookie
-async function getSessionUserId(): Promise<number | null> {
-  const cookieStore = await cookies();
-  const session = cookieStore.get('session-token');
-  if (!session?.value) return null;
-
-  const [user] = await sql`
-    SELECT user_id AS id FROM "Sessions" WHERE id = ${session.value}
-  `;
-  return user?.id || null;
-}
-
-// Route handler
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
-   if (!action) {
+  if (!action) {
     return NextResponse.json({ error: 'Missing action' }, { status: 400 });
   }
 
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
 
-  const userId = await getSessionUserId();
-  if (!userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const user = await getUserFromSession();
+  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
   const body = await req.json();
 
@@ -40,14 +27,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid bet amount' }, { status: 400 });
       }
 
-      const [user] = await sql`
-        SELECT u.id, w.balance AS casino_balance
-        FROM "User" u
-        JOIN "CasinoWallet" w ON u.id = w.user_id
-        WHERE u.id = ${userId}
+      const [wallet] = await sql`
+        SELECT balance FROM "CasinoWallet" WHERE user_id = ${user.id}
       `;
 
-      if (!user || user.casino_balance < bet) {
+      if (!wallet || wallet.balance < bet) {
         return NextResponse.json({ error: 'Insufficient casino balance' }, { status: 400 });
       }
 
@@ -65,7 +49,7 @@ export async function POST(req: NextRequest) {
         dealer,
         playerScore: calculateScore(player),
         dealerScore: calculateScore(dealer),
-        casinoBalance: user.casino_balance - bet,
+        casinoBalance: wallet.balance - bet,
       });
     }
 
@@ -147,12 +131,12 @@ export async function POST(req: NextRequest) {
         await sql`
           UPDATE "CasinoWallet"
           SET balance = balance + ${payout}
-          WHERE user_id = ${userId}
+          WHERE user_id = ${user.id}
         `;
       }
 
       const [updated] = await sql`
-        SELECT balance FROM "CasinoWallet" WHERE user_id = ${userId}
+        SELECT balance FROM "CasinoWallet" WHERE user_id = ${user.id}
       `;
 
       return NextResponse.json({

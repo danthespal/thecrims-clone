@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
 import sql from '@/lib/core/db';
-import { createSession, destroySession } from '@/lib/session';
+import { createSession, getUserFromSession } from '@/lib/session';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 
 const SESSION_COOKIE_NAME = 'session-token';
@@ -87,29 +87,28 @@ export async function POST(req: NextRequest) {
         return await createSession(inserted.id);
       }
 
-        case 'logout': {
-          const cookieStore = req.cookies;
-          const session = cookieStore.get(SESSION_COOKIE_NAME);
-        
-          const response = NextResponse.json({ success: true });
-        
-          if (session?.value) {
-            await destroySession(session.value);
-        
-            response.cookies.set(SESSION_COOKIE_NAME, '', {
-              path: '/',
-              maxAge: 0,
-              httpOnly: true,
-              sameSite: 'strict',
-              secure: true,
-            });
-          }
-      
-          return response;
+      case 'logout': {
+        const user = await getUserFromSession();
+        const response = NextResponse.json({ success: true });
+
+        if (user) {
+          await sql`
+            DELETE FROM "Sessions" WHERE user_id = ${user.id}
+          `;
+          response.cookies.set(SESSION_COOKIE_NAME, '', {
+            path: '/',
+            maxAge: 0,
+            httpOnly: true,
+            sameSite: 'strict',
+            secure: true,
+          });
         }
 
-        default:
-            return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+        return response;
+      }
+
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
   } catch (err) {
     console.error(`${action} error:`, err);

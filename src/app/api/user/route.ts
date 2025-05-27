@@ -2,30 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/core/db';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { regenWill } from '@/lib/game/regenWill';
-import { cookies } from 'next/headers';
+import { getUserFromSession } from '@/lib/session';
 
 export async function GET(req: NextRequest) {
   const action = req.nextUrl.searchParams.get('action');
 
   if (action === 'session') {
     try {
-      const cookieStore = await cookies();
-      const session = cookieStore.get('session-token');
-
-      if (!session?.value) {
-        return NextResponse.json({ authenticated: false });
-      }
-
-      const [sessionUser] = await sql`
-        SELECT u.id
-        FROM "Sessions" s
-        JOIN "User" u ON u.id = s.user_id
-        WHERE s.id = ${session.value}
-      `;
-
-      if (!sessionUser) {
-        return NextResponse.json({ authenticated: false });
-      }
+      const user = await getUserFromSession();
+      if (!user) return NextResponse.json({ authenticated: false });
 
       const settingsRows = await sql`SELECT key, value FROM "GameSettings"`;
       const settings = Object.fromEntries(settingsRows.map(({ key, value }) => [key, value]));
@@ -34,29 +19,23 @@ export async function GET(req: NextRequest) {
       const regenRate = parseInt(settings.will_regen_per_minute || '1', 10);
 
       const [preRegen] = await sql`
-        SELECT will, last_regen FROM "User" WHERE id = ${sessionUser.id}
+        SELECT will, last_regen FROM "User" WHERE id = ${user.id}
       `;
 
-      await regenWill(
-        sessionUser.id,
-        preRegen.will,
-        preRegen.last_regen,
-        maxWill,
-        regenRate
-      );
+      await regenWill(user.id, preRegen.will, preRegen.last_regen, maxWill, regenRate);
 
-      const [user] = await sql`
+      const [fullUser] = await sql`
         SELECT u.id, u.account_name, u.email, u.profile_name, u.profile_suffix,
                u.level, u.money, u.respect, u.will, u.last_regen,
                COALESCE(cw.balance, 0) AS casino_balance
         FROM "User" u
         LEFT JOIN "CasinoWallet" cw ON cw.user_id = u.id
-        WHERE u.id = ${sessionUser.id}
+        WHERE u.id = ${user.id}
       `;
 
       return NextResponse.json({
         authenticated: true,
-        user,
+        user: fullUser,
         settings: {
           max_will: maxWill,
           regen_rate_per_minute: regenRate,
@@ -70,15 +49,11 @@ export async function GET(req: NextRequest) {
 
   if (action === 'settings') {
     try {
-      const rows: { key: string; value: string }[] = await sql`
-        SELECT key, value FROM "GameSettings"
-      `;
-
+      const rows = await sql`SELECT key, value FROM "GameSettings"`;
       const settings = rows.reduce<Record<string, string>>((acc, row) => {
         acc[row.key] = row.value;
         return acc;
       }, {});
-
       return NextResponse.json(settings);
     } catch (err) {
       console.error('❌ Failed to load settings:', err);
@@ -97,32 +72,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing action' }, { status: 400 });
   }
 
-  const cookieStore = req.cookies;
-  const session = cookieStore.get('session-token');
-
-  if (!session?.value) {
+  const user = await getUserFromSession();
+  if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
 
-  const sessionId = session.value;
-
   try {
     switch (action) {
       case 'profile': {
         const body = await req.json().catch(() => null);
-
-        const [user] = await sql`
-          SELECT u.id FROM "Sessions" s
-          JOIN "User" u ON u.id = s.user_id
-          WHERE s.id = ${sessionId}
-        `;
-
-        if (!user) {
-          return NextResponse.json({ error: 'User not found' }, { status: 404 });
-        }
 
         if (!body || Object.keys(body).length === 0) {
           const [userInfo] = await sql`
@@ -184,7 +145,7 @@ export async function POST(req: NextRequest) {
         await sql`
           UPDATE "User"
           SET password = ${hashed}
-          WHERE id = (SELECT user_id FROM "Sessions" WHERE id = ${sessionId})
+          WHERE id = ${user.id}
         `;
 
         return NextResponse.json({ success: true });
@@ -198,12 +159,10 @@ export async function POST(req: NextRequest) {
         }
 
         await sql`
-          DELETE FROM "User"
-          WHERE id = (SELECT user_id FROM "Sessions" WHERE id = ${sessionId})
+          DELETE FROM "User" WHERE id = ${user.id}
         `;
-
         await sql`
-          DELETE FROM "Sessions" WHERE id = ${sessionId}
+          DELETE FROM "Sessions" WHERE user_id = ${user.id}
         `;
 
         const res = NextResponse.json({ success: true });

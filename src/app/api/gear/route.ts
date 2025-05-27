@@ -1,30 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import sql from '@/lib/core/db';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { getItemById, Item as StaticItem } from '@/lib/game/itemLoader';
+import { getUserFromSession } from '@/lib/session';
 
 type Item = StaticItem & { quantity?: number };
+
+const MAX_INVENTORY_ITEMS = 36;
+const MAX_ITEM_QUANTITY = 1000;
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
-  const cookieStore = await cookies();
-  const session = cookieStore.get('session-token');
-
-  if (!session?.value) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  const [user] = await sql`
-    SELECT u.id FROM "Sessions" s
-    JOIN "User" u ON u.id = s.user_id
-    WHERE s.id = ${session.value}
-  `;
-
+  const user = await getUserFromSession();
   if (!user) {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   switch (action) {
@@ -74,21 +65,9 @@ export async function POST(req: NextRequest) {
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
 
-  const cookieStore = await cookies();
-  const session = cookieStore.get('session-token');
-
-  if (!session?.value) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
-  const [user] = await sql`
-    SELECT u.id FROM "Sessions" s
-    JOIN "User" u ON u.id = s.user_id
-    WHERE s.id = ${session.value}
-  `;
-
+  const user = await getUserFromSession();
   if (!user) {
-    return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
   switch (action) {
@@ -97,6 +76,20 @@ export async function POST(req: NextRequest) {
         equipment: Record<string, { id: number }>;
         inventory: { id: number; quantity?: number }[];
       };
+
+      if (body.inventory.length > MAX_INVENTORY_ITEMS) {
+        return NextResponse.json({
+          error: `Inventory exceeds maximum of ${MAX_INVENTORY_ITEMS} items.`,
+        }, { status: 400 });
+      }
+
+      for (const item of body.inventory) {
+        if ((item.quantity ?? 1) > MAX_ITEM_QUANTITY) {
+          return NextResponse.json({
+            error: `Item quantity too high (max ${MAX_ITEM_QUANTITY}).`,
+          }, { status: 400 });
+        }
+      }
 
       try {
         await sql.begin(async (tx) => {
@@ -113,7 +106,7 @@ export async function POST(req: NextRequest) {
           await tx`DELETE FROM "UserInventory" WHERE user_id = ${user.id}`;
           for (const item of body.inventory) {
             if (item?.id) {
-              const qty = item.quantity ?? 1;
+              const qty = Math.min(item.quantity ?? 1, MAX_ITEM_QUANTITY);
               await tx`
                 INSERT INTO "UserInventory" (user_id, item_id, quantity)
                 VALUES (${user.id}, ${item.id}, ${qty})
