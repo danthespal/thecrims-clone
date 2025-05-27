@@ -48,7 +48,7 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 - Centralized logic via `robberyConfig.ts`
 - Returns rewards and updates stats
 
-### Willpower Regeneration
+### Will Regeneration
 - Time-based regeneration engine (`regenWill.ts`)
 - Runs on session load and keeps values accurate
 
@@ -71,7 +71,7 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 
 ## 📁 Project Structure
 
-\`\`\`
+\\\
 src/
 ├── app/api/            # All API routes
 │   └── auth, user, shop, etc.
@@ -80,7 +80,7 @@ src/
 ├── hooks/              # Custom logic (e.g., useSession)
 ├── lib/                # Game logic, db, session, utils
 ├── types/              # Global type definitions
-\`\`\`
+\\\
 
 ---
 
