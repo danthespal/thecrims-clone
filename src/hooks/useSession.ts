@@ -6,9 +6,7 @@ import { useEffect } from 'react';
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function useSession() {
-  const { data, error, mutate } = useSWR('/api/user?action=session', fetcher, {
-    refreshInterval: 30000,
-  });
+  const { data, error, mutate } = useSWR('/api/user?action=session', fetcher);
 
   useEffect(() => {
     const handler = () => mutate();

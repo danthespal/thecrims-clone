@@ -5,6 +5,20 @@ import { useRouter } from 'next/navigation';
 import useSession from '@/hooks/useSession';
 import { calculateTimeToFull } from '@/lib/utils/stats';
 
+function simulateWill(last: number, updatedAt: string | undefined, max: number, regenRate: number): number {
+  if (!updatedAt) return last;
+
+  const updated = new Date(updatedAt).getTime();
+  if (isNaN(updated)) {
+    console.warn('Invalid updatedAt timestamp:', updatedAt);
+    return last;
+  }
+
+  const secondsPassed = (Date.now() - updated) / 1000;
+  const regenPerSecond = regenRate / 60;
+  return Math.min(max, last + secondsPassed * regenPerSecond);
+}
+
 export default function UserStats() {
   const [timeToFull, setTimeToFull] = useState('');
   const [levelProgress, setLevelProgress] = useState<number | null>(null);
@@ -15,13 +29,13 @@ export default function UserStats() {
   const user = session?.user;
   const settings = session?.settings;
 
-  // ⏱️ Live timer for will regen
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
     if (user && settings) {
       const updateTime = () => {
-        const time = calculateTimeToFull(user.will, settings.max_will, settings.regen_rate_per_minute);
+        const simulated = simulateWill(user.will, user.updated_at, settings.max_will, settings.regen_rate_per_minute);
+        const time = calculateTimeToFull(simulated, settings.max_will, settings.regen_rate_per_minute);
         setTimeToFull(time);
       };
 
@@ -32,7 +46,6 @@ export default function UserStats() {
     }
   }, [user, settings]);
 
-  // 📊 Level progress
   useEffect(() => {
     if (user && settings) {
       const nextLevel = user.level + 1;
@@ -53,7 +66,11 @@ export default function UserStats() {
 
   if (!user || !settings) return null;
 
-  const willPercentage = (user.will / settings.max_will) * 100;
+  const simulatedWill = simulateWill(user.will, user.updated_at, settings.max_will, settings.regen_rate_per_minute);
+  const displayedWill = isNaN(simulatedWill) ? user.will : Math.floor(simulatedWill);
+  const willPercentage = isNaN(simulatedWill)
+    ? (user.will / settings.max_will) * 100
+    : (simulatedWill / settings.max_will) * 100;
 
   return (
     <div className="bg-gray-900 border border-gray-800 p-4 rounded-lg text-sm text-gray-400 space-y-2">
@@ -68,7 +85,7 @@ export default function UserStats() {
         <p><span className="text-teal-300">Level:</span> {user.level}</p>
         <p><span className="text-teal-300">Money:</span> ${user.money}</p>
         <p><span className="text-teal-300">Respect:</span> {user.respect}</p>
-        <p><span className="text-teal-300">Will:</span> {user.will} / {settings.max_will}</p>
+        <p><span className="text-teal-300">Will:</span> {displayedWill} / {settings.max_will}</p>
 
         <div className="w-full bg-gray-700 rounded-full h-2.5 mt-1">
           <div
@@ -77,7 +94,7 @@ export default function UserStats() {
           />
         </div>
 
-        {user.will < settings.max_will && (
+        {simulatedWill < settings.max_will && (
           <p className="text-xs text-gray-500 mt-1">
             🕒 Full in: <strong>{timeToFull}</strong>
           </p>
