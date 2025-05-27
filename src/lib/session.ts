@@ -25,7 +25,7 @@ export async function createSession(userId: number): Promise<NextResponse> {
   const response = NextResponse.json({ success: true });
 
   response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: 60 * 60 * 24 * 7, // 7 days

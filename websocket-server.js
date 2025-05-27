@@ -1,19 +1,18 @@
-// ✅ UPDATED websocket-server.js
-
 const WebSocket = require('ws');
 const http = require('http');
 const { Pool } = require('pg');
+require('dotenv').config();
 
 const db = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:admin@localhost:5432/thecrims_clone'
+  connectionString: process.env.DATABASE_URL
 });
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ server });
 
 const clients = new Set();
-const userSockets = new Map(); // userId -> ws
-const onlineUsers = new Set(); // userIds
+const userSockets = new Map();
+const onlineUsers = new Set();
 
 function broadcast(payload) {
   const data = JSON.stringify(payload);
@@ -33,17 +32,33 @@ wss.on('connection', (ws) => {
 
   ws.on('message', async (data) => {
     try {
+      console.log('📨 Incoming:', data);
       const parsed = JSON.parse(data);
 
       if (parsed.type === 'join') {
-        if (!parsed.userId) return;
+        const { sessionToken } = parsed;
 
-        userId = parsed.userId;
+        if (!sessionToken) {
+          console.warn('❌ No sessionToken provided.');
+          ws.send(JSON.stringify({ type: 'system', message: '❌ Missing session token.' }));
+          ws.close();
+          return;
+        }
+
+        const result = await db.query(`SELECT user_id FROM "Sessions" WHERE id = $1`, [sessionToken]);
+        if (result.rowCount === 0) {
+          console.warn('❌ Invalid sessionToken:', sessionToken);
+          ws.send(JSON.stringify({ type: 'system', message: '❌ Invalid or expired session.' }));
+          ws.close();
+          return;
+        }
+
+        userId = result.rows[0].user_id;
         userSockets.set(userId, ws);
         clients.add(ws);
         onlineUsers.add(userId);
 
-        const result = await db.query(`
+        const messagesRes = await db.query(`
           SELECT cm.id, cm.message, cm.created_at, u.id as user_id, u.profile_name
           FROM "ClubMessages" cm
           JOIN "User" u ON cm.user_id = u.id
@@ -51,21 +66,26 @@ wss.on('connection', (ws) => {
           LIMIT 20
         `);
 
-        ws.send(JSON.stringify({ type: 'init', messages: result.rows.reverse() }));
+        ws.send(JSON.stringify({ type: 'init', messages: messagesRes.rows.reverse() }));
         broadcast({ type: 'system', message: `🟢 User #${userId} joined the club chat.` });
         sendOnlineUsersUpdate();
         return;
       }
 
-      if (parsed.type !== 'message' || !parsed.userId || !parsed.message) return;
+      if (parsed.type !== 'message' || !userId || !parsed.message) return;
 
       const isPrivate = !!parsed.recipientId;
       const timestamp = new Date().toISOString();
 
-      const user = await db.query(`SELECT profile_name FROM "User" WHERE id = $1`, [parsed.userId]);
+      const user = await db.query(`SELECT profile_name FROM "User" WHERE id = $1`, [userId]);
       const profileName = user.rows[0]?.profile_name ?? 'Unknown';
 
       if (isPrivate) {
+        if (parsed.recipientId === userId) {
+          ws.send(JSON.stringify({ type: 'system', message: `❌ You cannot message yourself.` }));
+          return;
+        }
+
         const recipientUser = await db.query(`SELECT id, profile_name FROM "User" WHERE id = $1`, [parsed.recipientId]);
         if (recipientUser.rowCount === 0) {
           ws.send(JSON.stringify({ type: 'system', message: `❌ Private message failed: user does not exist.` }));
@@ -83,10 +103,11 @@ wss.on('connection', (ws) => {
           id: Date.now(),
           message: parsed.message,
           created_at: timestamp,
-          user_id: parsed.userId,
+          user_id: userId,
           profile_name: profileName,
           recipient_id: parsed.recipientId,
-          recipient_profile_name: recipientProfileName
+          recipient_profile_name: recipientProfileName,
+          type: 'private_message'
         };
 
         const recipientWs = userSockets.get(parsed.recipientId);
@@ -99,22 +120,23 @@ wss.on('connection', (ws) => {
 
         await db.query(
           `INSERT INTO "PrivateMessages" (sender_id, recipient_id, message) VALUES ($1, $2, $3)`,
-          [parsed.userId, parsed.recipientId, parsed.message]
+          [userId, parsed.recipientId, parsed.message]
         );
       } else {
         const payload = {
           id: Date.now(),
           message: parsed.message,
           created_at: timestamp,
-          user_id: parsed.userId,
-          profile_name: profileName
+          user_id: userId,
+          profile_name: profileName,
+          type: 'new_message'
         };
 
         broadcast({ type: 'new_message', message: payload });
 
         await db.query(
           `INSERT INTO "ClubMessages" (user_id, message) VALUES ($1, $2)`,
-          [parsed.userId, parsed.message]
+          [userId, parsed.message]
         );
       }
     } catch (err) {
