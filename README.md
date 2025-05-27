@@ -1,6 +1,6 @@
 # 🕹️ TheCrims Clone — Next.js Full-Stack Game
 
-A full-featured multiplayer game inspired by *TheCrims*, built with a modern tech stack including **Next.js**, **PostgreSQL**, **TailwindCSS**, and **TypeScript**.
+A full-featured multiplayer game inspired by *TheCrims*, built with a modern tech stack: **Next.js**, **PostgreSQL**, **TailwindCSS**, **TypeScript**, and **WebSocket**.
 
 ---
 
@@ -13,10 +13,10 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
   - Willpower regeneration
   - Casino (Blackjack, deposit/withdraw)
   - Gear and inventory management
-  - Shop system with items and types
-- 💬 Real-time Club Chat (WebSocket)
+  - Shop system with static items and types
+- 💬 Real-time Club Chat with private messaging (WebSocket)
 - 🎯 Dynamic dashboard with level/respect progress
-- ⚙️ Modular, scalable API design with full audit compliance
+- ⚙️ Modular API design (action-based routing)
 
 ---
 
@@ -26,10 +26,10 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 |-------------|-----------------------------|
 | Frontend    | Next.js (App Router)        |
 | UI          | TailwindCSS + React Context |
-| Backend     | API Routes (REST-like)      |
-| DB          | PostgreSQL via `postgres`   |
-| Auth        | Custom session cookies (no OAuth) |
-| Real-time   | WebSocket via `ws` + Node.js |
+| Backend     | REST-like API Routes        |
+| DB          | PostgreSQL + pg             |
+| Auth        | Custom session cookies      |
+| Real-time   | Node.js WebSocket (`ws`)    |
 | Typesafety  | TypeScript everywhere       |
 
 ---
@@ -37,93 +37,97 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 ## 🔐 Authentication
 
 - Custom `session-token` stored in HTTP-only cookie
-- Session lifecycle: created on login, persisted for 7 days
+- 7-day session lifecycle
 - Session auto-refresh via `useSession()` hook
-- Logout destroys server and cookie session safely
+- Logout removes session from DB and clears cookie
 
 ---
 
 ## 🧠 Core Systems
 
 ### Robbery
-- Action-based system with configurable cooldowns
-- Centralized logic via `robberyConfig.ts`
-- Returns rewards and updates stats
+- Cooldown-based actions
+- Defined in `robberyConfig.ts`
+- Dynamic willpower cost/reward calculations
 
 ### Will Regeneration
-- Time-based regeneration engine (`regenWill.ts`)
-- Runs on session load and keeps values accurate
+- Auto-regenerates willpower per minute
+- Triggered on session load via `regenWill.ts`
 
 ### Casino
-- Supports deposits, withdrawals, and Blackjack
-- Full transactional safety
 - Player wallet and casino wallet separated
+- Supports deposits, withdrawals, Blackjack logic
+- Tracked via `CasinoTransactions` and `CasinoWallet`
 
 ### Gear & Inventory
-- Fully equipped gear slots (via item loader)
-- Inventory quantity limits and slot caps
-- Equipment state stored per user
+- Equipment slots and stat-boosting items
+- Inventory storage with item quantities
+- All managed via centralized gear API
 
 ### Items & Shop
-- Public `/items` API for static data
-- Buy items from shop, stored in DB
-- Types, tags, quantity rules handled server-side
+- Static item definitions stored server-side
+- Buy items using `/api/shop`
+- Item data served via `/api/items`
 
 ---
 
 ## 💬 Club Chat (WebSocket)
 
-Players can chat live in the **Clubs** tab using a dedicated WebSocket server.
+Real-time communication with live status and private messaging.
 
-### 🧪 Starting the WebSocket Server Locally
+### Features:
+- Club-wide messages
+- Private messages using `/pm @profile#id message`
+- User presence and join/leave announcements
+- Online user list updates in real-time
 
-1. Make sure PostgreSQL is running and the database is seeded.
-2. Ensure your `.env` or system environment includes:
+### Running WebSocket Locally:
 
-   ```env
-   DATABASE_URL=postgresql://postgres:admin@localhost:5432/thecrims_clone
-   ```
+```bash
+# Ensure DATABASE_URL is in .env
+DATABASE_URL=postgresql://postgres:admin@localhost:5432/thecrims_clone
 
-3. From the root project directory, run:
+# Start the WebSocket server
+node websocket-server.js
+```
 
-   ```bash
-   node websocket-server.js
-   ```
-
-4. You should see:
-
-   ```
-   ✅ WebSocket server listening on ws://localhost:4000
-   ```
-
-### 💡 Features:
-- Shows last 50 messages on connect
-- Real-time broadcast of new messages
-- Disconnect/connection handling with fallback UI
-- Client-side auto-scroll to bottom
+Expected output:
+```
+✅ WebSocket server listening on ws://localhost:4000
+```
 
 ---
 
 ## ✅ API Quality
 
-This project has undergone a **full route-by-route audit**, ensuring:
-- Consistent session validation
-- Input sanitization and rate limiting
-- Unified error handling
-- Optimized structure for scalability
+This project has undergone a full audit:
+- Unified `?action=`-based API structure
+- Proper session and input validation
+- Centralized error and cooldown management
+- Scalable and secure
+
+---
+
+## 🧭 Chat Commands
+
+| Command               | Description                        |
+|------------------------|------------------------------------|
+| `/pm @user#id msg`    | Send a private message             |
+| `/help`               | Show available chat commands       |
+| `/r msg`              | Reply to last private message      |
 
 ---
 
 ## 📈 Planned Improvements
 
-- Add item usage effects
-- PvP or attack logic
-- Admin panel for moderation
-- Transaction logs and audit dashboard
-- Enhanced WebSocket moderation (rate limits, mute, profanity filter)
+- 🧠 Add item usage logic (e.g., drugs for will restore)
+- ⚔️ PvP and attack logic with respect loss/gain
+- 👑 Admin panel with mute/ban tools
+- 🧾 Transaction log + moderation dashboard
+- 🔇 Rate limiting + profanity filter for chat
 
 ---
 
 ## 📜 License
 
-This project is open-source and MIT licensed.
+MIT License. Free to use, fork, and improve.
