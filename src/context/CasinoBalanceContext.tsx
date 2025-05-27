@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react';
 import useSWR from 'swr';
+import useSession from '@/hooks/useSession';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -14,7 +15,13 @@ type CasinoBalanceContextType = {
 const CasinoBalanceContext = createContext<CasinoBalanceContextType | undefined>(undefined);
 
 export function CasinoBalanceProvider({ children }: { children: React.ReactNode }) {
-  const { data, error, mutate } = useSWR('/api/casino?action=history', fetcher);
+  const { session } = useSession();
+  const isAuthenticated = session?.authenticated;
+
+  const { data, error, mutate } = useSWR(
+    isAuthenticated ? '/api/casino?action=history' : null,
+    fetcher
+  );
 
   const balance = data?.totals?.total_deposit - data?.totals?.total_withdraw || 0;
 
@@ -23,7 +30,7 @@ export function CasinoBalanceProvider({ children }: { children: React.ReactNode 
       value={{
         balance,
         refresh: mutate,
-        loading: !data && !error,
+        loading: isAuthenticated ? !data && !error : false,
       }}
     >
       {children}

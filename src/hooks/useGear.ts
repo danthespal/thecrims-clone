@@ -1,20 +1,23 @@
 'use client';
 
 import useSWR from 'swr';
-import { useMemo } from 'react';
+import useSession from '@/hooks/useSession';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function useGear() {
-  const { data, error, mutate } = useSWR('/api/gear?action=load', fetcher);
+  const { session } = useSession();
 
-  const stableEquipment = useMemo(() => data?.equipment ?? {}, [data?.equipment]);
-  const stableInventory = useMemo(() => data?.inventory ?? [], [data?.inventory]);
+  const shouldFetch = session?.authenticated;
+  const { data, error, isLoading, mutate } = useSWR(
+    shouldFetch ? '/api/gear?action=load' : null,
+    fetcher
+  );
 
   return {
-    equipment: stableEquipment,
-    inventory: stableInventory,
-    loading: !data && !error,
+    equipment: data?.equipment ?? {},
+    inventory: data?.inventory ?? [],
+    loading: isLoading,
     error,
     refresh: mutate,
   };

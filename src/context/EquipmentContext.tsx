@@ -7,6 +7,7 @@ import {
 } from 'react';
 import type { Item as BaseItem } from '@/lib/game/itemLoader';
 import useGear from '@/hooks/useGear';
+import useSession from '@/hooks/useSession';
 
 export type ItemWithQuantity = BaseItem & {
   quantity?: number;
@@ -44,13 +45,20 @@ export const slotRules: Record<keyof EquipmentSlots, BaseItem['type']> = {
 };
 
 export function EquipmentProvider({ children }: { children: ReactNode }) {
+  const { session } = useSession();
+  const isAuthenticated = session?.authenticated;
+
   const {
-    equipment,
-    inventory,
-    refresh: refreshState,
+    equipment: rawEquipment,
+    inventory: rawInventory,
+    refresh,
   } = useGear();
 
+  const equipment = isAuthenticated ? rawEquipment : {};
+  const inventory = isAuthenticated ? rawInventory : [];
+
   const saveState = async () => {
+    if (!isAuthenticated) return;
     sendSave(equipment, inventory);
   };
 
@@ -68,8 +76,6 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
       quantity: item.quantity ?? 1,
     }));
 
-    console.log('📦 Saving NOW:', { cleanedEquipment, cleanedInventory });
-
     fetch('/api/gear?action=save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,13 +88,13 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
         const error = await res.json();
         console.error('❌ Failed to save:', error);
       } else {
-        console.log('✅ Save complete');
-        refreshState();
+        refresh();
       }
     });
   };
 
   const equipItem = (slot: keyof EquipmentSlots, item: BaseItem) => {
+    if (!isAuthenticated) return;
     if (slotRules[slot] !== item.type) return;
 
     const currentItem = equipment[slot];
@@ -119,6 +125,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
   };
 
   const unequipItem = (slot: keyof EquipmentSlots) => {
+    if (!isAuthenticated) return;
     const item = equipment[slot];
     if (!item) return;
 
@@ -147,7 +154,7 @@ export function EquipmentProvider({ children }: { children: ReactNode }) {
         equipItem,
         unequipItem,
         saveState,
-        refreshState,
+        refreshState: refresh,
       }}
     >
       {children}
