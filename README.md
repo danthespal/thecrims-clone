@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🕹️ TheCrims Clone — Next.js Full-Stack Game
 
-## Getting Started
+A full-featured multiplayer game inspired by *TheCrims*, built with a modern tech stack including **Next.js**, **PostgreSQL**, **TailwindCSS**, and **TypeScript**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 📌 Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- 🧍 User registration, login, and session persistence (7 days)
+- 🔐 Secure session handling and rate-limited API access
+- 🧪 Full gameplay systems:
+  - Robbery system with cooldowns
+  - Willpower regeneration
+  - Casino (Blackjack, deposit/withdraw)
+  - Gear and inventory management
+  - Shop system with items and types
+- 🎯 Dynamic dashboard with level/respect progress
+- ⚙️ Modular, scalable API design with full audit compliance
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ⚙️ Tech Stack
 
-## Learn More
+| Layer       | Technology                  |
+|-------------|-----------------------------|
+| Frontend    | Next.js (App Router)        |
+| UI          | TailwindCSS + React Context |
+| Backend     | API Routes (REST-like)      |
+| DB          | PostgreSQL via `postgres`   |
+| Auth        | Custom session cookies (no OAuth) |
+| Typesafety  | TypeScript everywhere       |
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔐 Authentication
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Custom session-token stored in HTTP-only cookie
+- Session lifecycle: created on login, persisted for 7 days
+- Session auto-refresh via `useSession()` hook
+- Logout destroys server and cookie session safely
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🧠 Core Systems
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Robbery
+- Action-based system with configurable cooldowns
+- Centralized logic via `robberyConfig.ts`
+- Returns rewards and updates stats
+
+### Willpower Regeneration
+- Time-based regeneration engine (`regenWill.ts`)
+- Runs on session load and keeps values accurate
+
+### Casino
+- Supports deposits, withdrawals, and Blackjack
+- Full transactional safety
+- Player wallet and casino wallet separated
+
+### Gear & Inventory
+- Fully equipped gear slots (via item loader)
+- Inventory quantity limits and slot caps
+- Equipment state stored per user
+
+### Items & Shop
+- Public `/items` API for static data
+- Buy items from shop, stored in DB
+- Types, tags, quantity rules handled server-side
+
+---
+
+## 📁 Project Structure
+
+\`\`\`
+src/
+├── app/api/            # All API routes
+│   └── auth, user, shop, etc.
+├── components/         # Dashboard UI, shop, stats, etc.
+├── context/            # Global providers (e.g., inventory)
+├── hooks/              # Custom logic (e.g., useSession)
+├── lib/                # Game logic, db, session, utils
+├── types/              # Global type definitions
+\`\`\`
+
+---
+
+## ✅ API Quality
+
+This project has undergone a **full route-by-route audit**, ensuring:
+- Consistent session validation
+- Input sanitization and rate limiting
+- Unified error handling
+- Optimized structure for scalability
+
+---
+
+## 📈 Planned Improvements
+
+- Add item usage effects
+- PvP or attack logic
+- Admin panel for moderation
+- Transaction logs and audit dashboard
+- Optional WebSocket real-time updates
+
+---
+
+## 📜 License
+
+This project is open-source and MIT licensed.
