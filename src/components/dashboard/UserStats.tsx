@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import useSession from '@/hooks/useSession';
 import { calculateTimeToFull } from '@/lib/utils/stats';
+import classNames from 'classnames';
 
 function simulateWill(last: number, updatedAt: string | undefined, max: number, regenRate: number): number {
   if (!updatedAt) return last;
@@ -23,6 +24,8 @@ export default function UserStats() {
   const [timeToFull, setTimeToFull] = useState('');
   const [levelProgress, setLevelProgress] = useState<number | null>(null);
   const [nextLevelRespect, setNextLevelRespect] = useState<number | null>(null);
+  const [flash, setFlash] = useState(false);
+  const [willGain, setWillGain] = useState<number | null>(null);
   const { session } = useSession();
   const router = useRouter();
 
@@ -64,6 +67,20 @@ export default function UserStats() {
     }
   }, [user, settings]);
 
+  useEffect(() => {
+    const handler = (e: CustomEvent) => {
+      const delta = e.detail?.gain;
+      if (typeof delta === 'number') {
+        setFlash(true);
+        setWillGain(delta);
+        setTimeout(() => setFlash(false), 500);
+        setTimeout(() => setWillGain(null), 1000);
+      }
+    };
+    window.addEventListener('will:gain', handler as EventListener);
+    return () => window.removeEventListener('will:gain', handler as EventListener);
+  }, []);
+
   if (!user || !settings) return null;
 
   const simulatedWill = simulateWill(user.will, user.updated_at, settings.max_will, settings.regen_rate_per_minute);
@@ -85,7 +102,9 @@ export default function UserStats() {
         <p><span className="text-teal-300">Level:</span> {user.level}</p>
         <p><span className="text-teal-300">Money:</span> ${user.money}</p>
         <p><span className="text-teal-300">Respect:</span> {user.respect}</p>
-        <p><span className="text-teal-300">Will:</span> {displayedWill} / {settings.max_will}</p>
+        <p className={classNames('transition-colors', { 'text-green-400': flash, 'text-gray-400': !flash })}>
+          <span className="text-teal-300">Will:</span> {displayedWill} / {settings.max_will}
+        </p>
 
         <div className="w-full bg-gray-700 rounded-full h-2.5 mt-1">
           <div
@@ -93,6 +112,10 @@ export default function UserStats() {
             style={{ width: `${willPercentage}%` }}
           />
         </div>
+
+        {willGain !== null && (
+          <div className="text-green-400 text-xs animate-ping-fast">+{willGain} Will</div>
+        )}
 
         {simulatedWill < settings.max_will && (
           <p className="text-xs text-gray-500 mt-1">

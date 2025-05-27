@@ -1,6 +1,6 @@
 'use client';
 
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import useSession from '@/hooks/useSession';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -19,5 +19,6 @@ export default function useCasinoHistory() {
     totals: data?.totals ?? {},
     loading: isLoading,
     error,
+    refresh: () => mutate('/api/casino?action=history'),
   };
 }

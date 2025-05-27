@@ -4,7 +4,7 @@ interface Props {
   tabs?: string[];
 }
 
-const defaultTabs = ['Weapons', 'Clubs', 'Drugs'];
+const defaultTabs = ['Weapons', 'Drugs', 'Clubs'];
 
 export default function ActionTabs({ active, onChange, tabs = defaultTabs }: Props) {
   return (

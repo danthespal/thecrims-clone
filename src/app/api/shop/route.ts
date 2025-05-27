@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   if (action === 'list') {
     const items = await sql`
-      SELECT id, name, description, type, price
+      SELECT id, name, description, type, price, will_restore
       FROM "Items"
       ORDER BY price ASC
     `;

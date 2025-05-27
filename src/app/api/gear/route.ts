@@ -122,6 +122,58 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    case 'consume': {
+      const { item_id } = await req.json();
+      if (!item_id || typeof item_id !== 'number') {
+        return NextResponse.json({ error: 'Invalid item_id' }, { status: 400 });
+      }
+
+      const item = await getItemById(item_id);
+      if (!item || item.type !== 'drug') {
+        return NextResponse.json({ error: 'Item is not a consumable drug' }, { status: 400 });
+      }
+
+      const [userRow] = await sql`
+        SELECT will FROM "User" WHERE id = ${user.id}
+      `;
+      const [maxRow] = await sql`
+        SELECT value FROM "GameSettings" WHERE key = 'max_will'
+      `;
+      const currentWill = userRow?.will ?? 0;
+      const maxWill = parseInt(maxRow?.value ?? '100');
+      const restore = item.will_restore ?? 0;
+
+      const newWill = Math.min(currentWill + restore, maxWill);
+      const actualRestored = newWill - currentWill;
+
+      try {
+        await sql.begin(async (tx) => {
+          await tx`
+            UPDATE "User" SET will = ${newWill}
+            WHERE id = ${user.id}
+          `;
+          await tx`
+            UPDATE "UserInventory"
+            SET quantity = quantity - 1
+            WHERE user_id = ${user.id} AND item_id = ${item_id}
+          `;
+          await tx`
+            DELETE FROM "UserInventory"
+            WHERE user_id = ${user.id} AND item_id = ${item_id} AND quantity <= 0
+          `;
+        });
+
+        return NextResponse.json({
+          success: true,
+          message: `You consumed ${item.name} and restored ${actualRestored} will.`,
+          will: newWill,
+        });
+      } catch (err) {
+        console.error('❌ Error during consumption:', err);
+        return NextResponse.json({ error: 'Failed to consume drug' }, { status: 500 });
+      }
+    }
+
     default:
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
