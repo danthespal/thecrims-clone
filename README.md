@@ -4,6 +4,75 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 
 ---
 
+## 🚀 Getting Started
+
+Follow these steps to run **TheCrims Clone** locally:
+
+### 1. 📦 Clone the Repository
+
+```bash
+git clone https://github.com/your-username/thecrims-clone.git
+cd thecrims-clone
+```
+
+### 2. 📁 Install Dependencies
+
+Make sure you have **Node.js (v18+)** and **PostgreSQL** installed.
+
+```bash
+npm install
+```
+
+### 3. ⚙️ Set Up the Database
+
+Create a PostgreSQL database called `thecrims_clone` (or update the name in `.env`):
+
+```bash
+# Connect to PostgreSQL and run:
+CREATE DATABASE thecrims_clone;
+```
+
+Then, set up your `.env` file:
+
+```env
+DATABASE_URL=postgresql://postgres:admin@localhost:5432/thecrims_clone
+```
+
+> Replace credentials with your local setup if needed.
+
+### 4. 🛠️ Apply Schema
+
+If you're using `pg`, import the schema manually or run any provided `.sql` dump:
+
+```bash
+psql -U postgres -d thecrims_clone < schema.sql
+```
+
+> If you're using Prisma (planned): `npx prisma migrate dev` (optional future step)
+
+### 5. ▶️ Run the Dev Server
+
+```bash
+npm run dev
+```
+
+Visit: [http://localhost:3000](http://localhost:3000)
+
+### 6. 🔌 Start WebSocket Server (For Real-Time Chat)
+
+In a new terminal:
+
+```bash
+node websocket-server.js
+```
+
+Expected output:
+```
+✅ WebSocket server listening on ws://localhost:4000
+```
+
+---
+
 ## 📌 Features
 
 - 🧍 User registration, login, and session persistence (7 days)
