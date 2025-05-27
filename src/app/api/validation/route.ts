@@ -45,16 +45,19 @@ export async function POST(req: NextRequest) {
     }
 
     case 'check-profile': {
-      const { profile_name, profile_suffix } = body;
-      if (!profile_name || !profile_suffix) {
-        return NextResponse.json({ error: 'Missing profile_name or profile_suffix' }, { status: 400 });
+      const { profile_name } = body;
+      if (!profile_name) {
+        return NextResponse.json({ error: 'Missing profile_name' }, { status: 400 });
       }
 
       const [user] = await sql`
-        SELECT id FROM "User" WHERE profile_name = ${profile_name} AND profile_suffix = ${profile_suffix}
+        SELECT id FROM "User" WHERE profile_name = ${profile_name}
       `;
 
-      return NextResponse.json({ available: !user });
+      return NextResponse.json({
+        available: !user,
+        id: user?.id ?? null
+      });
     }
 
     default:
