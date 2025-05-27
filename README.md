@@ -69,21 +69,6 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 
 ---
 
-## 📁 Project Structure
-
-\\\
-src/
-├── app/api/            # All API routes
-│   └── auth, user, shop, etc.
-├── components/         # Dashboard UI, shop, stats, etc.
-├── context/            # Global providers (e.g., inventory)
-├── hooks/              # Custom logic (e.g., useSession)
-├── lib/                # Game logic, db, session, utils
-├── types/              # Global type definitions
-\\\
-
----
-
 ## ✅ API Quality
 
 This project has undergone a **full route-by-route audit**, ensuring:
