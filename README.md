@@ -14,6 +14,7 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
   - Casino (Blackjack, deposit/withdraw)
   - Gear and inventory management
   - Shop system with items and types
+- 💬 Real-time Club Chat (WebSocket)
 - 🎯 Dynamic dashboard with level/respect progress
 - ⚙️ Modular, scalable API design with full audit compliance
 
@@ -28,13 +29,14 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 | Backend     | API Routes (REST-like)      |
 | DB          | PostgreSQL via `postgres`   |
 | Auth        | Custom session cookies (no OAuth) |
+| Real-time   | WebSocket via `ws` + Node.js |
 | Typesafety  | TypeScript everywhere       |
 
 ---
 
 ## 🔐 Authentication
 
-- Custom session-token stored in HTTP-only cookie
+- Custom `session-token` stored in HTTP-only cookie
 - Session lifecycle: created on login, persisted for 7 days
 - Session auto-refresh via `useSession()` hook
 - Logout destroys server and cookie session safely
@@ -69,6 +71,39 @@ A full-featured multiplayer game inspired by *TheCrims*, built with a modern tec
 
 ---
 
+## 💬 Club Chat (WebSocket)
+
+Players can chat live in the **Clubs** tab using a dedicated WebSocket server.
+
+### 🧪 Starting the WebSocket Server Locally
+
+1. Make sure PostgreSQL is running and the database is seeded.
+2. Ensure your `.env` or system environment includes:
+
+   ```env
+   DATABASE_URL=postgresql://postgres:admin@localhost:5432/thecrims_clone
+   ```
+
+3. From the root project directory, run:
+
+   ```bash
+   node websocket-server.js
+   ```
+
+4. You should see:
+
+   ```
+   ✅ WebSocket server listening on ws://localhost:4000
+   ```
+
+### 💡 Features:
+- Shows last 50 messages on connect
+- Real-time broadcast of new messages
+- Disconnect/connection handling with fallback UI
+- Client-side auto-scroll to bottom
+
+---
+
 ## ✅ API Quality
 
 This project has undergone a **full route-by-route audit**, ensuring:
@@ -85,7 +120,7 @@ This project has undergone a **full route-by-route audit**, ensuring:
 - PvP or attack logic
 - Admin panel for moderation
 - Transaction logs and audit dashboard
-- Optional WebSocket real-time updates
+- Enhanced WebSocket moderation (rate limits, mute, profanity filter)
 
 ---
 

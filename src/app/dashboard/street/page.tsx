@@ -4,6 +4,7 @@ import { useState } from 'react';
 import GameUpdates from '@/components/dashboard/Street/GameUpdates';
 import StreetNews from '@/components/dashboard/Street/StreetNews';
 import ActionTabs from '@/components/dashboard/Street/ActionTabs';
+import ClubChat from '@/components/dashboard/Street/ClubChat';
 import { useEquipmentContext } from '@/context/EquipmentContext';
 import useSession from '@/hooks/useSession';
 import useShop from '@/hooks/useShop';
@@ -115,7 +116,7 @@ const StreetPage = () => {
           </div>
         )}
 
-        {activeTab === 'Clubs' && <p>Visit underground clubs and increase your influence.</p>}
+        {activeTab === 'Clubs' && <ClubChat />}
         {activeTab === 'Drugs' && <p>Buy and trade drugs to grow your empire.</p>}
       </div>
     </div>

@@ -14,11 +14,13 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.511.0",
     "next": "15.3.2",
+    "pg": "^8.16.0",
     "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
     "swr": "^2.3.3",
+    "ws": "^8.18.2",
     "zod": "^3.25.23",
     "zxcvbn": "^4.4.2"
   },
@@ -38,5 +40,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.19.4",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.0.9"
   }
 }
