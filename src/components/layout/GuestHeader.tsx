@@ -1,16 +1,27 @@
+'use client';
+
 import Link from 'next/link';
+import { LogIn, UserPlus, BarChart2, HelpCircle } from 'lucide-react';
+
+const navItems = [
+  { label: 'Login', href: '/', icon: <LogIn size={16} /> },
+  { label: 'Register', href: '/register', icon: <UserPlus size={16} /> },
+  { label: 'Stats', href: '/stats', icon: <BarChart2 size={16} /> },
+  { label: 'Help', href: '/help', icon: <HelpCircle size={16} /> },
+];
 
 export default function GuestHeader() {
   return (
-    <header className="w-full flex justify-between items-center px-6 py-4 bg-gray-950 border-b border-gray-800">
-      <nav className="space-x-4 text-sm font-medium">
-        {['Login', 'Register', 'Stats', 'Help'].map((label) => (
+    <header className="w-full flex justify-between items-center px-6 py-4 bg-gray-950 border-b border-gray-800 shadow-sm">
+      <nav className="flex gap-4 text-sm font-medium text-gray-300">
+        {navItems.map(({ label, href, icon }) => (
           <Link
             key={label}
-            href={label === 'Login' ? '/' : `/${label.toLowerCase()}`}
-            className="hover:text-teal-400"
+            href={href}
+            className="flex items-center gap-1 hover:text-teal-400 transition-colors"
           >
-            {label}
+            {icon}
+            <span>{label}</span>
           </Link>
         ))}
       </nav>
