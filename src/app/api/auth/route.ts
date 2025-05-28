@@ -3,6 +3,8 @@ import bcrypt from 'bcrypt';
 import sql from '@/lib/core/db';
 import { createSession, getUserFromSession } from '@/lib/session';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
+import { LoginSchema } from '@/lib/schemas/loginSchema';
+import { RegisterSchema } from '@/lib/schemas/registerSchema';
 
 const SESSION_COOKIE_NAME = 'session-token';
 
@@ -20,22 +22,20 @@ export async function POST(req: NextRequest) {
   try {
     switch (action) {
       case 'login': {
-        const { account_name, password } = await req.json();
+        const body = await req.json();
+        const result = LoginSchema.safeParse(body);
 
-        if (!account_name || !password) {
-          return NextResponse.json({ error: 'Missing credentials' }, { status: 400 });
+        if (!result.success) {
+          return NextResponse.json({ error: 'Invalid input', issues: result.error.flatten() }, { status: 400 });
         }
+
+        const { account_name, password } = result.data;
 
         const [user] = await sql`
           SELECT * FROM "User" WHERE account_name = ${account_name}
         `;
 
-        if (!user) {
-          return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-        }
-
-        const passwordValid = await bcrypt.compare(password, user.password);
-        if (!passwordValid) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
           return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
@@ -43,6 +43,13 @@ export async function POST(req: NextRequest) {
       }
 
       case 'register': {
+        const body = await req.json();
+        const result = RegisterSchema.safeParse(body);
+
+        if (!result.success) {
+          return NextResponse.json({ error: 'Invalid input', issues: result.error.flatten() }, { status: 400 });
+        }
+
         const {
           account_name,
           email,
@@ -50,18 +57,7 @@ export async function POST(req: NextRequest) {
           profile_name,
           profile_suffix,
           date_of_birth,
-        } = await req.json();
-
-        if (
-          !account_name ||
-          !email ||
-          !password ||
-          !profile_name ||
-          !profile_suffix ||
-          !date_of_birth
-        ) {
-          return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
+        } = result.data;
 
         const [existing] = await sql`
           SELECT 1 FROM "User"

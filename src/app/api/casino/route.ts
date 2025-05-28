@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/core/db';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { getUserFromSession } from '@/lib/session';
+import { CasinoActionSchema, CasinoAmountSchema } from '@/lib/schemas/casinoSchema';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -46,18 +47,28 @@ export async function POST(req: NextRequest) {
   if (limitRes) return limitRes;
 
   const { searchParams } = new URL(req.url);
-  const action = searchParams.get('action');
+  const actionRow = searchParams.get('action');
+
+  const parsedAction = CasinoActionSchema.safeParse(actionRow);
+  if (!parsedAction.success) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  }
+
+  const action = parsedAction.data;
 
   const user = await getUserFromSession();
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { amount } = await req.json();
-  const value = parseInt(amount, 10);
-  if (isNaN(value) || value <= 0) {
-    return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+  const body = await req.json();
+  const parsedBody = CasinoAmountSchema.safeParse(body);
+
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: 'Invalid amount', issues: parsedBody.error.flatten() }, { status: 400 });
   }
+
+  const { amount } = parsedBody.data;
 
   switch (action) {
     case 'deposit': {
@@ -65,21 +76,21 @@ export async function POST(req: NextRequest) {
         SELECT money FROM "User" WHERE id = ${user.id}
       `;
 
-      if (!found || found.money < value) {
+      if (!found || found.money < amount) {
         return NextResponse.json({ error: 'Insufficient user funds' }, { status: 400 });
       }
 
       await sql.begin(async (tx) => {
-        await tx`UPDATE "User" SET money = money - ${value} WHERE id = ${user.id}`;
+        await tx`UPDATE "User" SET money = money - ${amount} WHERE id = ${user.id}`;
         await tx`
           INSERT INTO "CasinoWallet" (user_id, balance)
-          VALUES (${user.id}, ${value})
+          VALUES (${user.id}, ${amount})
           ON CONFLICT (user_id) DO UPDATE
-          SET balance = "CasinoWallet".balance + ${value}
+          SET balance = "CasinoWallet".balance + ${amount}
         `;
         await tx`
           INSERT INTO "CasinoTransactions" (user_id, type, amount)
-          VALUES (${user.id}, 'deposit', ${value})
+          VALUES (${user.id}, 'deposit', ${amount})
         `;
       });
 
@@ -91,16 +102,16 @@ export async function POST(req: NextRequest) {
         SELECT balance FROM "CasinoWallet" WHERE user_id = ${user.id}
       `;
 
-      if (!wallet || wallet.balance < value) {
+      if (!wallet || wallet.balance < amount) {
         return NextResponse.json({ error: 'Insufficient casino balance' }, { status: 400 });
       }
 
       await sql.begin(async (tx) => {
-        await tx`UPDATE "CasinoWallet" SET balance = balance - ${value} WHERE user_id = ${user.id}`;
-        await tx`UPDATE "User" SET money = money + ${value} WHERE id = ${user.id}`;
+        await tx`UPDATE "CasinoWallet" SET balance = balance - ${amount} WHERE user_id = ${user.id}`;
+        await tx`UPDATE "User" SET money = money + ${amount} WHERE id = ${user.id}`;
         await tx`
           INSERT INTO "CasinoTransactions" (user_id, type, amount)
-          VALUES (${user.id}, 'withdraw', ${value})
+          VALUES (${user.id}, 'withdraw', ${amount})
         `;
       });
 

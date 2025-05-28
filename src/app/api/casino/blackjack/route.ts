@@ -3,14 +3,24 @@ import sql from '@/lib/core/db';
 import { drawCard, calculateScore } from '@/lib/game/blackjackUtils';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { getUserFromSession } from '@/lib/session';
+import {
+  BlackjackActionSchema,
+  StartSchema,
+  HitSchema,
+  StandSchema,
+  ResolveSchema,
+} from '@/lib/schemas/blackjackSchema';
 
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);
-  const action = url.searchParams.get('action');
+  const rawAction = url.searchParams.get('action');
 
-  if (!action) {
-    return NextResponse.json({ error: 'Missing action' }, { status: 400 });
+  const parsedAction = BlackjackActionSchema.safeParse(rawAction);
+  if (!parsedAction.success) {
+    return NextResponse.json({ error: 'Invalid or missing action' }, { status: 400 });
   }
+
+  const action = parsedAction.data;
 
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
@@ -22,15 +32,13 @@ export async function POST(req: NextRequest) {
 
   switch (action) {
     case 'start': {
-      const bet = Number(body.bet);
-      if (!Number.isInteger(bet) || bet <= 0) {
-        return NextResponse.json({ error: 'Invalid bet amount' }, { status: 400 });
+      const parsed = StartSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid bet amount', issues: parsed.error.flatten() }, { status: 400 });
       }
+      const { bet } = parsed.data;
 
-      const [wallet] = await sql`
-        SELECT balance FROM "CasinoWallet" WHERE user_id = ${user.id}
-      `;
-
+      const [wallet] = await sql`SELECT balance FROM "CasinoWallet" WHERE user_id = ${user.id}`;
       if (!wallet || wallet.balance < bet) {
         return NextResponse.json({ error: 'Insufficient casino balance' }, { status: 400 });
       }
@@ -54,11 +62,12 @@ export async function POST(req: NextRequest) {
     }
 
     case 'hit': {
-      const { hand } = body;
-      if (!Array.isArray(hand) || hand.some((c) => typeof c !== 'string')) {
-        return NextResponse.json({ error: 'Invalid hand' }, { status: 400 });
+      const parsed = HitSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid hand', issues: parsed.error.flatten() }, { status: 400 });
       }
 
+      const { hand } = parsed.data;
       const newCard = drawCard();
       const updatedHand = [...hand, newCard];
       const score = calculateScore(updatedHand);
@@ -72,11 +81,12 @@ export async function POST(req: NextRequest) {
     }
 
     case 'stand': {
-      const { dealerHand } = body;
-      if (!dealerHand || !Array.isArray(dealerHand) || dealerHand.length === 0 || dealerHand.some((c) => typeof c !== 'string')) {
-        return NextResponse.json({ error: 'Invalid dealer hand' }, { status: 400 });
+      const parsed = StandSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid dealer hand', issues: parsed.error.flatten() }, { status: 400 });
       }
 
+      const { dealerHand } = parsed.data;
       const updatedDealerHand = [...dealerHand];
       let dealerScore = calculateScore(updatedDealerHand);
 
@@ -93,16 +103,12 @@ export async function POST(req: NextRequest) {
     }
 
     case 'resolve': {
-      const { bet, playerHand, dealerHand } = body;
-
-      if (
-        !bet || bet <= 0 ||
-        !Array.isArray(playerHand) || playerHand.some(card => typeof card !== 'string') ||
-        !Array.isArray(dealerHand) || dealerHand.some(card => typeof card !== 'string')
-      ) {
-        return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+      const parsed = ResolveSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid resolve input', issues: parsed.error.flatten() }, { status: 400 });
       }
 
+      const { bet, playerHand, dealerHand } = parsed.data;
       const playerScore = calculateScore(playerHand);
       const dealerScore = calculateScore(dealerHand);
 
@@ -146,8 +152,5 @@ export async function POST(req: NextRequest) {
         validatedResult: result,
       });
     }
-
-    default:
-      return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
   }
 }

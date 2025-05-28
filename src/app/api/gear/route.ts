@@ -3,15 +3,22 @@ import sql from '@/lib/core/db';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { getItemById, Item as StaticItem } from '@/lib/game/itemLoader';
 import { getUserFromSession } from '@/lib/session';
+import { SaveGearSchema, ConsumeGearSchema, GearActionSchema } from '@/lib/schemas/gearSchema';
+
+const MAX_ITEM_QUANTITY = 1000;
+const MAX_INVENTORY_ITEMS = 36;
 
 type Item = StaticItem & { quantity?: number };
 
-const MAX_INVENTORY_ITEMS = 36;
-const MAX_ITEM_QUANTITY = 1000;
-
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const action = url.searchParams.get('action');
+  const actionParam = url.searchParams.get('action');
+
+  const parsedAction = GearActionSchema.safeParse(actionParam);
+  if (!parsedAction.success) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  }
+  const action = parsedAction.data;
 
   const user = await getUserFromSession();
   if (!user) {
@@ -63,7 +70,13 @@ export async function POST(req: NextRequest) {
   if (limitRes) return limitRes;
 
   const url = new URL(req.url);
-  const action = url.searchParams.get('action');
+  const actionParam = url.searchParams.get('action');
+
+  const parsedAction = GearActionSchema.safeParse(actionParam);
+  if (!parsedAction.success) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  }
+  const action = parsedAction.data;
 
   const user = await getUserFromSession();
   if (!user) {
@@ -72,18 +85,22 @@ export async function POST(req: NextRequest) {
 
   switch (action) {
     case 'save': {
-      const body = await req.json() as {
-        equipment: Record<string, { id: number }>;
-        inventory: { id: number; quantity?: number }[];
-      };
+      const body = await req.json();
+      const parsed = SaveGearSchema.safeParse(body);
 
-      if (body.inventory.length > MAX_INVENTORY_ITEMS) {
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid gear input', issues: parsed.error.flatten() }, { status: 400 });
+      }
+
+      const { equipment, inventory } = parsed.data;
+
+      if (inventory.length > MAX_INVENTORY_ITEMS) {
         return NextResponse.json({
           error: `Inventory exceeds maximum of ${MAX_INVENTORY_ITEMS} items.`,
         }, { status: 400 });
       }
 
-      for (const item of body.inventory) {
+      for (const item of inventory) {
         if ((item.quantity ?? 1) > MAX_ITEM_QUANTITY) {
           return NextResponse.json({
             error: `Item quantity too high (max ${MAX_ITEM_QUANTITY}).`,
@@ -94,7 +111,7 @@ export async function POST(req: NextRequest) {
       try {
         await sql.begin(async (tx) => {
           await tx`DELETE FROM "UserEquipment" WHERE user_id = ${user.id}`;
-          for (const [slot, item] of Object.entries(body.equipment)) {
+          for (const [slot, item] of Object.entries(equipment)) {
             if (item?.id) {
               await tx`
                 INSERT INTO "UserEquipment" (user_id, slot, item_id)
@@ -104,7 +121,7 @@ export async function POST(req: NextRequest) {
           }
 
           await tx`DELETE FROM "UserInventory" WHERE user_id = ${user.id}`;
-          for (const item of body.inventory) {
+          for (const item of inventory) {
             if (item?.id) {
               const qty = Math.min(item.quantity ?? 1, MAX_ITEM_QUANTITY);
               await tx`
@@ -123,10 +140,12 @@ export async function POST(req: NextRequest) {
     }
 
     case 'consume': {
-      const { item_id } = await req.json();
-      if (!item_id || typeof item_id !== 'number') {
-        return NextResponse.json({ error: 'Invalid item_id' }, { status: 400 });
+      const body = await req.json();
+      const parsed = ConsumeGearSchema.safeParse(body);
+      if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid item_id', issues: parsed.error.flatten() }, { status: 400 });
       }
+      const { item_id } = parsed.data;
 
       const item = await getItemById(item_id);
       if (!item || item.type !== 'drug') {

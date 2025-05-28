@@ -3,6 +3,7 @@ import sql from '@/lib/core/db';
 import { getUserFromSession } from '@/lib/session';
 import { getItemById } from '@/lib/game/itemLoader';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
+import { ShopActionSchema, ShopPurchaseSchema } from '@/lib/schemas/shopSchema';
 
 export async function GET(req: NextRequest) {
   const action = req.nextUrl.searchParams.get('action');
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const action = req.nextUrl.searchParams.get('action');
+  const actionRaw = req.nextUrl.searchParams.get('action');
 
   const limitRes = checkRateLimit(req);
   if (limitRes) return limitRes;
@@ -28,11 +29,21 @@ export async function POST(req: NextRequest) {
   const user = await getUserFromSession();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { item_id, quantity = 1 } = await req.json();
-
-  if (!item_id || typeof item_id !== 'number' || quantity < 1) {
-    return NextResponse.json({ error: 'Invalid item ID or quantity' }, { status: 400 });
+  const parsedAction = ShopActionSchema.safeParse(actionRaw);
+  if (!parsedAction.success) {
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
+
+  const action = parsedAction.data;
+
+  const body = await req.json();
+  const parsedBody = ShopPurchaseSchema.safeParse(body);
+
+  if (!parsedBody.success) {
+    return NextResponse.json({ error: 'Invalid input', issues: parsedBody.error.flatten() }, { status: 400 });
+  }
+
+  const { item_id, quantity } = parsedBody.data;
 
   const item = await getItemById(item_id);
   if (!item) return NextResponse.json({ error: 'Item not found' }, { status: 404 });
@@ -45,7 +56,7 @@ export async function POST(req: NextRequest) {
   if (action === 'buy') {
     const totalCost = item.price * quantity;
     if (currentMoney < totalCost) {
-      return NextResponse.json({ error: 'Insufficient funds' }, { status: 400 });
+      return NextResponse.json({ error: 'Insufficient funds ' }, { status: 400 });
     }
 
     try {
@@ -69,7 +80,7 @@ export async function POST(req: NextRequest) {
       });
     } catch (error) {
       console.error('Buy error:', error);
-      return NextResponse.json({ error: 'Failed to complete purchase.' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to complete purchase' }, { status: 500 });
     }
   }
 

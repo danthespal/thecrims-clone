@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { robberyActions, RobberyAction } from '@/lib/game/robberyConfig';
+import { robberyActions } from '@/lib/game/robberyConfig';
 import { checkRateLimit } from '@/lib/core/rateLimiter';
 import { getUserFromSession } from '@/lib/session';
+import { RobberyActionSchema } from '@/lib/schemas/robberySchema';
 
 export async function POST(req: NextRequest) {
   const url = new URL(req.url);
-  const action = url.searchParams.get('action') as RobberyAction;
+  const action = url.searchParams.get('action');
 
-  if (!action) {
-    return NextResponse.json({ error: 'Missing action' }, { status: 400 });
+  const parsed = RobberyActionSchema.safeParse(action);
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid or missing action' }, { status: 400 });
   }
 
-  const config = robberyActions[action];
+  const actionKey = parsed.data;
+  const config = robberyActions[actionKey];
   if (!config) {
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    return NextResponse.json({ error: 'Unsupported robbery type' }, { status: 400 });
   }
 
   const limitRes = checkRateLimit(req);
